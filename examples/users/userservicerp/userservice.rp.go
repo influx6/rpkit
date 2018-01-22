@@ -111,7 +111,7 @@ func NewMakeAdminServer(service MakeAdminMethodService, hook Hook, headers http.
 
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "MakeAdmin".
 func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -122,7 +122,7 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "MakeAdmin",
@@ -191,11 +191,11 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
 					"api_base": BaseServiceName,
 					"method": "MakeAdmin",
@@ -203,18 +203,18 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 					"route": MakeAdminServiceRoute,
 					"api": "users.UserService",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx)
-    }()
+		actionErr = impl.service(ctx)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -224,7 +224,7 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			"api": "users.UserService",
 		})
 		return
-    }
+	}
 
 	w.WriteHeader(http.StatusOK)
 
@@ -299,7 +299,7 @@ func NewEnableSMSServer(service EnableSMSMethodService, hook Hook, headers http.
 
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "EnableSMS".
 func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -310,7 +310,7 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "EnableSMS",
@@ -379,11 +379,11 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
 					"api_base": BaseServiceName,
 					"method": "EnableSMS",
@@ -391,18 +391,18 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 					"route": EnableSMSServiceRoute,
 					"api": "users.UserService",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx)
-    }()
+		actionErr = impl.service(ctx)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -412,7 +412,7 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			"api": "users.UserService",
 		})
 		return
-    }
+	}
 
 
 	w.WriteHeader(http.StatusOK)
@@ -504,7 +504,7 @@ func NewDeleteServer(service DeleteMethodService, hook Hook, headers http.Header
 func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -515,7 +515,7 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "Delete",
@@ -586,11 +586,11 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
 					"api_base": BaseServiceName,
 					"method": "Delete",
@@ -598,18 +598,18 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 					"route": DeleteServiceRoute,
 					"api": "users.UserService",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, r.Body)
-    }()
+		actionErr = impl.service(ctx, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -619,7 +619,7 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			"api": "users.UserService",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -705,7 +705,7 @@ func NewUpdateServer(service UpdateMethodService, hook Hook, headers http.Header
 func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -716,7 +716,7 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "Update",
@@ -787,11 +787,11 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
 					"api_base": BaseServiceName,
 					"method": "Update",
@@ -799,18 +799,18 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 					"route": UpdateServiceRoute,
 					"api": "users.UserService",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, r.Body)
-    }()
+		actionErr = impl.service(ctx, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -820,7 +820,7 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			"api": "users.UserService",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -919,7 +919,7 @@ func NewGetServer(service GetMethodService, hook Hook, headers http.Header) GetS
 func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -930,7 +930,7 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "Get",
@@ -1001,11 +1001,11 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
 					"api_base": BaseServiceName,
 					"method": "Get",
@@ -1013,18 +1013,18 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					"route": GetServiceRoute,
 					"api": "users.UserService",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, w, r.Body)
-    }()
+		actionErr = impl.service(ctx, w, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -1034,7 +1034,7 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"api": "users.UserService",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -1131,7 +1131,7 @@ func NewCreateServer(service CreateMethodService, hook Hook, headers http.Header
 func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -1142,7 +1142,7 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "Create",
@@ -1213,11 +1213,11 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
 					"api_base": BaseServiceName,
 					"method": "Create",
@@ -1225,18 +1225,18 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 					"route": CreateServiceRoute,
 					"api": "users.UserService",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, w, r.Body)
-    }()
+		actionErr = impl.service(ctx, w, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -1246,7 +1246,7 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			"api": "users.UserService",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -1343,7 +1343,7 @@ func NewGetAllServer(service GetAllMethodService, hook Hook, headers http.Header
 func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -1354,7 +1354,7 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "GetAll",
@@ -1425,11 +1425,11 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
 					"api_base": BaseServiceName,
 					"method": "GetAll",
@@ -1437,18 +1437,18 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 					"route": GetAllServiceRoute,
 					"api": "users.UserService",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, w, r.Body)
-    }()
+		actionErr = impl.service(ctx, w, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -1458,7 +1458,7 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			"api": "users.UserService",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -1487,11 +1487,11 @@ func isRedirect(code int) bool {
 func skipRedirects(in *http.Client) *http.Client {
 	copy := *in
 	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-        if in.CheckRedirect != nil {
-            err := in.CheckRedirect(req, via)
-            _ = err // to fix issue with warning about not checking error.
-        }
-        return http.ErrUseLastResponse
+		if in.CheckRedirect != nil {
+			err := in.CheckRedirect(req, via)
+			_ = err // to fix issue with warning about not checking error.
+		}
+		return http.ErrUseLastResponse
 	}
 	return &copy
 }

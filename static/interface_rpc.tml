@@ -111,7 +111,7 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -122,7 +122,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -191,11 +191,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -203,18 +203,18 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					"route": {{$method.Name}}ServiceRoute,
 					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx)
-    }()
+		actionErr = impl.service(ctx)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -224,7 +224,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
-    }
+	}
 
 	w.WriteHeader(http.StatusOK)
 
@@ -301,7 +301,7 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -312,7 +312,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -381,11 +381,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -393,18 +393,18 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					"route": {{$method.Name}}ServiceRoute,
 					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx)
-    }()
+		actionErr = impl.service(ctx)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -414,7 +414,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
-    }
+	}
 
 
 	w.WriteHeader(http.StatusOK)
@@ -503,7 +503,7 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -514,7 +514,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -583,11 +583,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -595,18 +595,18 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					"route": {{$method.Name}}ServiceRoute,
 					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, w)
-    }()
+		actionErr = impl.service(ctx, w)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -616,7 +616,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
-    }
+	}
 
 	w.WriteHeader(http.StatusOK)
 	if impl.hook != nil {
@@ -703,7 +703,7 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -714,7 +714,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -785,11 +785,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -797,18 +797,18 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					"route": {{$method.Name}}ServiceRoute,
 					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, w)
-    }()
+		actionErr = impl.service(ctx, w)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -818,7 +818,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -907,7 +907,7 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -918,7 +918,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -989,11 +989,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1001,18 +1001,18 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					"route": {{$method.Name}}ServiceRoute,
 					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, r.Body)
-    }()
+		actionErr = impl.service(ctx, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -1022,7 +1022,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -1119,7 +1119,7 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -1130,7 +1130,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1201,11 +1201,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1213,18 +1213,18 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					"route": {{$method.Name}}ServiceRoute,
 					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, w, r.Body)
-    }()
+		actionErr = impl.service(ctx, w, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -1234,7 +1234,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -1334,7 +1334,7 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-    ctx := r.Context()
+	ctx := r.Context()
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -1345,7 +1345,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1416,11 +1416,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-    func(){
-        defer func(){
-            if rerr := recover(); rerr != nil {
-                derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1428,18 +1428,18 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					"route": {{$method.Name}}ServiceRoute,
 					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 				})
-                panic(rerr)
-            }
-        }()
+				panic(rerr)
+			}
+		}()
 
 		if impl.hook != nil {
 			impl.hook.RequestProcessed(ctx)
 		}
 
-        actionErr = impl.service(ctx, w, r.Body)
-    }()
+		actionErr = impl.service(ctx, w, r.Body)
+	}()
 
-    if actionErr != nil {
+	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -1449,7 +1449,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
-    }
+	}
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -1478,11 +1478,11 @@ func isRedirect(code int) bool {
 func skipRedirects(in *http.Client) *http.Client {
 	copy := *in
 	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-        if in.CheckRedirect != nil {
-            err := in.CheckRedirect(req, via)
-            _ = err // to fix issue with warning about not checking error.
-        }
-        return http.ErrUseLastResponse
+		if in.CheckRedirect != nil {
+			err := in.CheckRedirect(req, via)
+			_ = err // to fix issue with warning about not checking error.
+		}
+		return http.ErrUseLastResponse
 	}
 	return &copy
 }
