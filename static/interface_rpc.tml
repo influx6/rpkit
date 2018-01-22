@@ -1,0 +1,1514 @@
+// All code below are auto-generated and should not be edited by handle.
+// See https://github.com/gokit/rpkit for more info.
+{{ $Itr := .Itr}} {{$Pkg := .Pkg}} {{$ServiceName := .ServiceName}}
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"io"
+	"errors"
+	"log"
+
+	{{quote .Pkg.Path}}
+)
+
+const (
+	// BaseServiceName defines the base name of service root.
+	BaseServiceName = {{quote .ServiceName}}
+
+	// MethodServiceName defines the complete name of this giving API service.
+	MethodServiceName = "{{.ServiceName}}.{{.Itr.Object.Name.Name}}"
+)
+
+// errors ...
+var (
+	ErrInvalidRequestURI = errors.New("invalid request uri")
+	ErrInvalidRequestMethod = errors.New("invalid request method")
+)
+
+//****************************************************************************
+// Types
+// Source: {{$Itr.Path}}
+//****************************************************************************
+
+// Hook defines a interface for having access to different areas of
+// a call to the service of a method.
+type Hook interface {
+	ResponseSent(context.Context)
+	ResponsePrepared(context.Context)
+	RequestRejected(context.Context)
+	RequestAccepted(context.Context)
+	RequestReceived(context.Context)
+	RequestProcessed(context.Context)
+}
+{{range $_, $method := .NoArgAndReturns}}
+//****************************************************************************
+// RP: No Arguments and No Return Methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type {{$method.Name}}MethodContract interface{
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+
+// {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
+// which executes it's internal behaviour based off on it's {{$method.Name}}MethodContract.
+type {{$method.Name}}MethodService func(context.Context) error
+
+// Serve{{.Name}}Method implements the core contract behaviour to service {{quote $method.Name}}
+// from "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It's job is to provide a pluggable function,
+// that can then be used within any transport layer, to said execute behaviour of method as a service.
+func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract) {{$method.Name}}MethodService {
+	return func(ctx context.Context) error {
+		{{if $method.HasArgType "context.Context"}}
+		provider.{{$method.Name}}(ctx)
+		{{else}}
+		provider.{{$method.Name}}()
+		{{end}}
+		return nil
+	}
+}
+
+// {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
+// from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
+type {{$method.Name}}Server interface {
+	http.Handler
+}
+
+type impl{{$method.Name}}Handler struct{
+	hook Hook
+	headers http.Header
+	service {{$method.Name}}MethodService
+}
+
+// New{{$method.Name}}Server returns a new instance of the HTTPHandler which services all
+// http requests for giving method {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}.
+func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook, headers http.Header) {{$method.Name}}Server {
+	return impl{{$method.Name}}Handler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
+func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", {{quote $Itr.Path}})
+		w.Header().Add("X-Method", {{quote $method.Name}})
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", {{quote $Itr.Path}})
+	w.Header().Add("X-Method", {{quote $method.Name}})
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	var actionErr error
+    func(){
+        defer func(){
+            if rerr := recover(); rerr != nil {
+                derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+                panic(rerr)
+            }
+        }()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+        actionErr = impl.service(ctx)
+    }()
+
+    if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+    }
+
+	w.WriteHeader(http.StatusOK)
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+{{end}}
+{{range $_, $method := .OnlyErrorMethods}}
+//****************************************************************************
+// RP: Error Returning methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type {{$method.Name}}MethodContract interface{
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+
+// {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
+// which executes it's internal behaviour based off on it's {{$method.Name}}MethodContract.
+type {{$method.Name}}MethodService func(context.Context) error
+
+// Serve{{.Name}}Method implements the core contract behaviour to service {{quote $method.Name}}
+// from "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It's job is to provide a pluggable function,
+// that can then be used within any transport layer, to said execute behaviour of method as a service.
+func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract) {{$method.Name}}MethodService {
+	return func(ctx context.Context) error {
+		{{if $method.HasArgType "context.Context"}}
+		return provider.{{$method.Name}}(ctx)
+		{{else}}
+		return provider.{{$method.Name}}()
+		{{end}}
+	}
+}
+
+// {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
+// from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
+type {{$method.Name}}Server interface {
+	http.Handler
+}
+
+type impl{{$method.Name}}Handler struct{
+	hook Hook
+	headers http.Header
+	service {{$method.Name}}MethodService
+}
+
+// New{{$method.Name}}Server returns a new instance of the HTTPHandler which services all
+// http requests for giving method {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}.
+func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook, headers http.Header) {{$method.Name}}Server {
+	return impl{{$method.Name}}Handler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
+func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", {{quote $Itr.Path}})
+		w.Header().Add("X-Method", {{quote $method.Name}})
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", {{quote $Itr.Path}})
+	w.Header().Add("X-Method", {{quote $method.Name}})
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	var actionErr error
+    func(){
+        defer func(){
+            if rerr := recover(); rerr != nil {
+                derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+                panic(rerr)
+            }
+        }()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+        actionErr = impl.service(ctx)
+    }()
+
+    if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+    }
+
+
+	w.WriteHeader(http.StatusOK)
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+{{end}}
+{{range $_, $method := .OutputWithErrorMethods}}
+//****************************************************************************
+// RP: Output with Returning Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type {{$method.Name}}MethodContract interface{
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+type {{$method.Name}}Encoder interface{
+	Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+}
+
+// {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
+// which executes it's internal behaviour based off on it's {{$method.Name}}MethodContract.
+type {{$method.Name}}MethodService func(context.Context, io.Writer) error
+
+// Serve{{.Name}}Method implements the core contract behaviour to service {{quote $method.Name}}
+// from "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}.
+// It returns a function that can be used within any transport layer to process, to said execute
+// behaviour of method as a service.
+func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$method.Name}}Encoder) {{$method.Name}}MethodService {
+	return func(ctx context.Context, w io.Writer) error {
+		{{if $method.HasArgType "context.Context"}}
+		res, err := provider.{{$method.Name}}(ctx)
+		{{else}}
+		res, err := provider.{{$method.Name}}()
+		{{end}}
+		if err != nil {
+			return err
+		}
+		return encoder.Encode(w, res)
+	}
+}
+
+// {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
+// from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
+type {{$method.Name}}Server interface {
+	http.Handler
+}
+
+type impl{{$method.Name}}Handler struct{
+	hook Hook
+	headers http.Header
+	service {{$method.Name}}MethodService
+}
+
+// New{{$method.Name}}Server returns a new instance of the HTTPHandler which services all
+// http requests for giving method {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}.
+func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook, headers http.Header) {{$method.Name}}Server {
+	return impl{{$method.Name}}Handler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
+func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", {{quote $Itr.Path}})
+		w.Header().Add("X-Method", {{quote $method.Name}})
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", {{quote $Itr.Path}})
+	w.Header().Add("X-Method", {{quote $method.Name}})
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+	var actionErr error
+    func(){
+        defer func(){
+            if rerr := recover(); rerr != nil {
+                derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+                panic(rerr)
+            }
+        }()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+        actionErr = impl.service(ctx, w)
+    }()
+
+    if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+    }
+
+	w.WriteHeader(http.StatusOK)
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+{{end}}
+{{range $_, $method := .OutputWithNoErrorMethods}}
+//****************************************************************************
+// RP: Output Returning Only Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type {{$method.Name}}MethodContract interface{
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+type {{$method.Name}}Encoder interface{
+	Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+}
+
+// {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
+// which executes it's internal behaviour based off on it's {{$method.Name}}MethodContract.
+type {{$method.Name}}MethodService func(context.Context, io.Writer) error
+
+// Serve{{.Name}}Method implements the core contract behaviour to service {{quote $method.Name}}
+// from "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}.
+// It returns a function that can be used within any transport layer to process, to said execute
+// behaviour of method as a service.
+func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$method.Name}}Encoder) {{$method.Name}}MethodService {
+	return func(ctx context.Context, w io.Writer) error {
+		{{if $method.HasArgType "context.Context"}}
+		res, err := provider.{{$method.Name}}(ctx)
+		{{else}}
+		res, err := provider.{{$method.Name}}()
+		{{end}}
+		if err != nil {
+			return err
+		}
+		return encoder.Encode(w, res)
+	}
+}
+
+// {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
+// from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
+type {{$method.Name}}Server interface {
+	http.Handler
+}
+
+type impl{{$method.Name}}Handler struct{
+	hook Hook
+	headers http.Header
+	service {{$method.Name}}MethodService
+}
+
+// New{{$method.Name}}Server returns a new instance of the HTTPHandler which services all
+// http requests for giving method {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}.
+func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook, headers http.Header) {{$method.Name}}Server {
+	return impl{{$method.Name}}Handler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
+func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", {{quote $Itr.Path}})
+		w.Header().Add("X-Method", {{quote $method.Name}})
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", {{quote $Itr.Path}})
+	w.Header().Add("X-Method", {{quote $method.Name}})
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+	w.WriteHeader(http.StatusOK)
+
+	var actionErr error
+    func(){
+        defer func(){
+            if rerr := recover(); rerr != nil {
+                derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+                panic(rerr)
+            }
+        }()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+        actionErr = impl.service(ctx, w)
+    }()
+
+    if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+    }
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+{{end}}
+{{range $_, $method := .InputWithErrorMethods}}
+//****************************************************************************
+// RP: Input Returning Only Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type {{$method.Name}}MethodContract interface{
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+
+// {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
+// expected by {{$method.Name}}MethodContract.{{$method.Name}}.
+type {{$method.Name}}Decoder interface{
+	Decode(io.Reader) ({{if eq ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+}
+
+// {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
+// which executes it's internal behaviour based off on it's {{$method.Name}}MethodContract.
+type {{$method.Name}}MethodService func(context.Context, io.Reader) error
+
+// Serve{{.Name}}Method implements the core contract behaviour to service {{quote $method.Name}}
+// from "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}.
+// It returns a function that can be used within any transport layer to process, to said execute
+// behaviour of method as a service.
+func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, decoder {{$method.Name}}Decoder) {{$method.Name}}MethodService {
+	return func(ctx context.Context, r io.Reader) error {
+		input, err := decoder.Decode(r)
+		if err != nil {
+			return err
+		}
+
+		{{if $method.HasArgType "context.Context"}}
+		return provider.{{$method.Name}}(ctx, input)
+		{{else}}
+		return provider.{{$method.Name}}(input)
+		{{end}}
+	}
+}
+
+// {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
+// from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
+type {{$method.Name}}Server interface {
+	http.Handler
+}
+
+type impl{{$method.Name}}Handler struct{
+	hook Hook
+	headers http.Header
+	service {{$method.Name}}MethodService
+}
+
+// New{{$method.Name}}Server returns a new instance of the HTTPHandler which services all
+// http requests for giving method {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}.
+func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook, headers http.Header) {{$method.Name}}Server {
+	return impl{{$method.Name}}Handler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
+func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+    ctx := r.Context()
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", {{quote $Itr.Path}})
+		w.Header().Add("X-Method", {{quote $method.Name}})
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", {{quote $Itr.Path}})
+	w.Header().Add("X-Method", {{quote $method.Name}})
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+	w.WriteHeader(http.StatusOK)
+
+	var actionErr error
+    func(){
+        defer func(){
+            if rerr := recover(); rerr != nil {
+                derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+                panic(rerr)
+            }
+        }()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+        actionErr = impl.service(ctx, r.Body)
+    }()
+
+    if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+    }
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+{{end}}
+{{range $_, $method := .InputAndOutputMethods}}
+//****************************************************************************
+// RP: Input And Output Only methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type {{$method.Name}}MethodContract interface{
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+
+// {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
+// expected by {{$method.Name}}MethodContract.{{$method.Name}}.
+type {{$method.Name}}Decoder interface{
+	Decode(io.Reader) ({{if eq ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+}
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+type {{$method.Name}}Encoder interface{
+	Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+}
+
+// {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
+// which executes it's internal behaviour based off on it's {{$method.Name}}MethodContract.
+type {{$method.Name}}MethodService func(context.Context, io.Writer, io.Reader) error
+
+// Serve{{.Name}}Method implements the core contract behaviour to service {{quote $method.Name}}
+// from "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}.
+// It returns a function that can be used within any transport layer to process, to said execute
+// behaviour of method as a service.
+func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$method.Name}}Encoder, decoder {{$method.Name}}Decoder) {{$method.Name}}MethodService {
+	return func(ctx context.Context, w io.Writer, r io.Reader) error {
+		input, err := decoder.Decode(r)
+		if err != nil {
+			return err
+		}
+
+		{{if $method.HasArgType "context.Context"}}
+		res := provider.{{$method.Name}}(ctx, input)
+		{{else}}
+		res := provider.{{$method.Name}}(input)
+		{{end}}
+
+		return encoder.Encode(w, res)
+	}
+}
+
+// {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
+// from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
+type {{$method.Name}}Server interface {
+	http.Handler
+}
+
+type impl{{$method.Name}}Handler struct{
+	hook Hook
+	headers http.Header
+	service {{$method.Name}}MethodService
+}
+
+// New{{$method.Name}}Server returns a new instance of the HTTPHandler which services all
+// http requests for giving method {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}.
+func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook, headers http.Header) {{$method.Name}}Server {
+	return impl{{$method.Name}}Handler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
+func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+    ctx := r.Context()
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", {{quote $Itr.Path}})
+		w.Header().Add("X-Method", {{quote $method.Name}})
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", {{quote $Itr.Path}})
+	w.Header().Add("X-Method", {{quote $method.Name}})
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+	w.WriteHeader(http.StatusOK)
+
+	var actionErr error
+    func(){
+        defer func(){
+            if rerr := recover(); rerr != nil {
+                derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+                panic(rerr)
+            }
+        }()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+        actionErr = impl.service(ctx, w, r.Body)
+    }()
+
+    if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+    }
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+{{end}}
+{{range $_, $method := .InputAndOutputWithErrorMethods}}
+//****************************************************************************
+// RP: Input And Output Returning Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type {{$method.Name}}MethodContract interface{
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+
+// {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
+// expected by {{$method.Name}}MethodContract.{{$method.Name}}.
+type {{$method.Name}}Decoder interface{
+	Decode(io.Reader) ({{if eq ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+}
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+type {{$method.Name}}Encoder interface{
+	Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+}
+
+// {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
+// which executes it's internal behaviour based off on it's {{$method.Name}}MethodContract.
+type {{$method.Name}}MethodService func(context.Context, io.Writer, io.Reader) error
+
+// Serve{{.Name}}Method implements the core contract behaviour to service {{quote $method.Name}}
+// from "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}.
+// It returns a function that can be used within any transport layer to process, to said execute
+// behaviour of method as a service.
+func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$method.Name}}Encoder, decoder {{$method.Name}}Decoder) {{$method.Name}}MethodService {
+	return func(ctx context.Context, w io.Writer, r io.Reader) error {
+		input, err := decoder.Decode(r)
+		if err != nil {
+			return err
+		}
+
+		{{if $method.HasArgType "context.Context"}}
+		res, err := provider.{{$method.Name}}(ctx, input)
+		{{else}}
+		res, err := provider.{{$method.Name}}(input)
+		{{end}}
+		if err != nil {
+			return err
+		}
+
+		return encoder.Encode(w, res)
+	}
+}
+
+// {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
+// from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
+type {{$method.Name}}Server interface {
+	http.Handler
+}
+
+type impl{{$method.Name}}Handler struct{
+	hook Hook
+	headers http.Header
+	service {{$method.Name}}MethodService
+}
+
+// New{{$method.Name}}Server returns a new instance of the HTTPHandler which services all
+// http requests for giving method {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}.
+func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook, headers http.Header) {{$method.Name}}Server {
+	return impl{{$method.Name}}Handler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
+func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+    ctx := r.Context()
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", {{quote $Itr.Path}})
+		w.Header().Add("X-Method", {{quote $method.Name}})
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", {{quote $Itr.Path}})
+	w.Header().Add("X-Method", {{quote $method.Name}})
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
+	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+	w.WriteHeader(http.StatusOK)
+
+	var actionErr error
+    func(){
+        defer func(){
+            if rerr := recover(); rerr != nil {
+                derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusBadRequest, "Failed to AtRequest checks", derr, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+                panic(rerr)
+            }
+        }()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+        actionErr = impl.service(ctx, w, r.Body)
+    }()
+
+    if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+			"package": {{quote $Itr.Path}},
+			"api_base": BaseServiceName,
+			"method": {{quote $method.Name}},
+			"api_service": MethodServiceName,
+			"route": {{$method.Name}}ServiceRoute,
+			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+		})
+		return
+    }
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+{{end}}
+
+//****************************************************************************
+// Utils
+// Source: {{$Itr.Path}}
+//****************************************************************************
+
+// willRedirect returns true/false if giving code is a redirect status.
+func willRedirect(code int) bool {
+	return code >= 301 && code <= 308
+}
+
+// isRedirect returns true/false if giving code is a redirect status.
+func isRedirect(code int) bool {
+	return code == http.StatusTemporaryRedirect || code == http.StatusPermanentRedirect
+}
+
+// skipRedirects copies giving http.Client and fix issue with possible redirects
+// in go1.8 when a post receives a status code which is undesired. Such has 302, 303,
+// and 301s.
+func skipRedirects(in *http.Client) *http.Client {
+	copy := *in
+	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+        if in.CheckRedirect != nil {
+            err := in.CheckRedirect(req, via)
+            _ = err // to fix issue with warning about not checking error.
+        }
+        return http.ErrUseLastResponse
+	}
+	return &copy
+}
+
+func jsonWriteError(w http.ResponseWriter, code int, message string, err error, meta map[string]interface{}){
+	var res jsonErrorResponse
+	res.Code = code
+	res.Err = err
+	res.Meta = meta
+	res.Message = message
+
+	w.WriteHeader(code)
+	w.Header().Set("Content-Type", "application/json")
+
+	data, err2 := json.Marshal(res);
+	if err2 == nil {
+		w.Write(data)
+		return
+	}
+
+	log.Printf("unable to send error response for error %+q: %+q", err, err2)
+}
+
+type jsonErrorResponse struct{
+	Code int `json:"code"`
+	Err error `json:"err"`
+	Message string `json:"message"`
+	Meta map[string]interface{} `json:"meta"`
+}
