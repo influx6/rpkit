@@ -1,0 +1,418 @@
+// All code below are auto-generated and should not be edited by handle.
+// See https://github.com/gokit/rpkit for more info.
+{{ $Itr := .Itr}} {{$Pkg := .Pkg}} {{$ServiceName := .ServiceName}}
+import (
+	"encoding/json"
+	"errors"
+	"io"
+
+	{{quote .Pkg.Path}}
+)
+
+// errors ...
+var (
+	ErrDecodedUnknownType = errors.New("decoder returns unknown type")
+)
+
+//****************************************************************************
+// Encoders
+// Source: {{$Itr.Path}}
+//****************************************************************************
+
+// Encoder defines an interface representing a generic encoder which
+// expects a interface{} type has it's encoding target.
+type Encoder interface{
+	Encode(io.Writer, interface{}) error
+}
+
+// Decoder defines an interface representing a generic decoder which
+// returning a interface{} type has it's response.
+type Decoder interface{
+	Decode(io.Reader) (interface{}, error)
+}
+
+//****************************************************************************
+// Base Encoders / Decoders Implementations
+// Source: {{$Itr.Path}}
+//****************************************************************************
+
+// JSONEncoder implements a wrapper over the encoding/json JSONEncoder to
+// match the Encoder interface. This allow us use JSON has a encoder for
+// any method encoding as needed.
+type JSONEncoder struct{}
+
+// Encode implements the necessary logic to use json for encoding.
+func (JSONEncoder) Encode(w io.Writer, payload interface{}) error {
+	return json.NewEncoder(w).Encode(payload)
+}
+
+{{range $_, $method := .OutputWithErrorMethods}}
+//****************************************************************************
+// RP: Output with Returning Error Decoders
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+{{$retType := $method.GetReturnsAt 0}}
+// {{$method.Name}}Decoder implements the {{$method.Name}}Encoder by providing a wrapper around
+// a implementation of the Encoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Encoder which behaves in such a manner.
+type {{$method.Name}}EncoderWrapper struct {
+	Encoder Encoder
+}
+
+// Encode implements the Encode function required by {{$method.Name}}Encoder.
+func (ew {{$method.Name}}EncoderWrapper) Encode(w io.Writer, payload {{ $retType.ExType }}) error {
+	return ew.Encoder.Encode(w, payload)
+}
+
+// {{$method.Name}}ClientDecoderWrapper implements the {{$method.Name}}ClientDecoder by providing a wrapper around
+// a implementation of the ClientDecoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Decoder which behaves in such a manner.
+type {{$method.Name}}ClientDecoderWrapper struct {
+	Decoder Decoder
+}
+
+// Decode implements the Decode function required by {{$method.Name}}ClientDecoder.
+func (cdw {{$method.Name}}ClientDecoderWrapper) Decode(r io.Reader) ({{ $retType.ExType }}, error) {
+	recs, err := cdw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$retType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $retType.ExType}}, ErrDecodedUnknownType
+}
+
+// {{$method.Name}}ClientJSONDecoder implements a wrapper over the encoding/json JSONDecoder to
+// match the Decoder interface. This allow us use JSON has a decoding for any method decoding as
+// needed. This specifically decodes incoming data into {{$retType.ExType}} type.
+type {{$method.Name}}ClientJSONDecoder struct{}
+
+// Decode implements the necessary logic to use json for decoding.
+func ({{$method.Name}}ClientJSONDecoder) Decode(r io.Reader) (interface{}, error) {
+	var res {{$retType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err
+}
+{{end}}
+{{range $_, $method := .OutputWithNoErrorMethods}}
+//****************************************************************************
+// RP: Output Returning No Error Decoders
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+{{$retType := $method.GetReturnsAt 0}}
+
+// {{$method.Name}}Decoder implements the {{$method.Name}}Encoder by providing a wrapper around
+// a implementation of the Encoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Encoder which behaves in such a manner.
+type {{$method.Name}}EncoderWrapper struct {
+	Encoder Encoder
+}
+
+// Encode implements the Encode function required by {{$method.Name}}Encoder.
+func (ew {{$method.Name}}EncoderWrapper) Encode(w io.Writer, payload {{ $retType.ExType }}) error {
+	return ew.Encoder.Encode(w, payload)
+}
+
+// {{$method.Name}}ClientDecoderWrapper implements the {{$method.Name}}ClientDecoder by providing a wrapper around
+// a implementation of the ClientDecoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Decoder which behaves in such a manner.
+type {{$method.Name}}ClientDecoderWrapper struct {
+	Decoder Decoder
+}
+
+// Decode implements the Decode function required by {{$method.Name}}ClientDecoder.
+func (cdw {{$method.Name}}ClientDecoderWrapper) Decode(r io.Reader) ({{ $retType.ExType }}, error) {
+	recs, err := cdw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$retType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $retType.ExType}}, ErrDecodedUnknownType
+}
+
+// {{$method.Name}}ClientJSONDecoder implements a wrapper over the encoding/json JSONDecoder to
+// match the Decoder interface. This allow us use JSON has a decoding for any method decoding as
+// needed. This specifically decodes incoming data into {{$retType.ExType}} type.
+type {{$method.Name}}ClientJSONDecoder struct{}
+
+// Decode implements the necessary logic to use json for decoding.
+func ({{$method.Name}}ClientJSONDecoder) Decode(r io.Reader) (interface{}, error) {
+	var res {{$retType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err
+}
+{{end}}
+{{range $_, $method := .InputWithErrorMethods}}
+//****************************************************************************
+// RP: Input Returning Only Error Encoders
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+// {{$method.Name}}Decoder implements the {{$method.Name}}Decoder by providing a wrapper around
+// a implementation of the Decoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Decoder which behaves in such a manner.
+type {{$method.Name}}DecoderWrapper struct {
+	Decoder Decoder
+}
+
+// Decode implements the Decode function required by {{$method.Name}}Decoder.
+func (dw {{$method.Name}}DecoderWrapper) Decode(r io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error) {
+	{{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}recs, err := dw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $argType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$argType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $argType.ExType}}, ErrDecodedUnknownType{{else}}{{$argType := $method.GetArgsAt 0}}
+	recs, err := dw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $argType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$argType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $argType.ExType}}, ErrDecodedUnknownType{{end}}
+}
+
+// {{$method.Name}}JSONDecoder implements a wrapper over the encoding/json JSONDecoder to
+// match the Decoder interface. This allow us use JSON has a decoding for any method decoding as
+// needed. This specifically decodes incoming data into wanted type.
+type {{$method.Name}}JSONDecoder struct{}
+
+// Decode implements the necessary logic to use json for decoding.
+func ({{$method.Name}}JSONDecoder) Decode(r io.Reader) (interface{}, error) {
+{{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}var res {{$argType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err{{else}}{{$argType := $method.GetArgsAt 0}}
+	var res {{$argType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err{{end}}
+}
+
+// {{$method.Name}}ClientEncoderWrapper implements the {{$method.Name}}ClientEncoder by providing a wrapper around
+// a implementation of the ClientEncoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Encoder which behaves in such a manner.
+type {{$method.Name}}ClientEncoderWrapper struct {
+	Encoder Encoder
+}
+
+// Encode implements the Encode function required by {{$method.Name}}ClientEncoder.
+func (cew {{$method.Name}}ClientEncoderWrapper)	Encode(w io.Writer, payload {{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}) error {
+	return cew.Encoder.Encode(w, payload)
+}
+{{end}}
+{{range $_, $method := .InputAndOutputMethods}}
+//****************************************************************************
+// RP: Input And Output Only Encoders/Decoders
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+{{$retType := $method.GetReturnsAt 0}}
+// {{$method.Name}}Decoder implements the {{$method.Name}}Decoder by providing a wrapper around
+// a implementation of the Decoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Decoder which behaves in such a manner.
+type {{$method.Name}}DecoderWrapper struct {
+	Decoder Decoder
+}
+
+// Decode implements the Decode function required by {{$method.Name}}Decoder.
+func (dw {{$method.Name}}DecoderWrapper) Decode(r io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error) {
+	{{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}recs, err := dw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $argType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$argType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $argType.ExType}}, ErrDecodedUnknownType{{else}}{{$argType := $method.GetArgsAt 0}}
+	recs, err := dw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $argType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$argType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $argType.ExType}}, ErrDecodedUnknownType{{end}}
+}
+
+// {{$method.Name}}JSONDecoder implements a wrapper over the encoding/json JSONDecoder to
+// match the Decoder interface. This allow us use JSON has a decoding for any method decoding as
+// needed. This specifically decodes incoming data into wanted type.
+type {{$method.Name}}JSONDecoder struct{}
+
+// Decode implements the necessary logic to use json for decoding.
+func ({{$method.Name}}JSONDecoder) Decode(r io.Reader) (interface{}, error) {
+{{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}var res {{$argType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err{{else}}{{$argType := $method.GetArgsAt 0}}
+	var res {{$argType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err{{end}}
+}
+
+// {{$method.Name}}ClientDecoderWrapper implements the {{$method.Name}}ClientDecoder by providing a wrapper around
+// a implementation of the ClientDecoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Decoder which behaves in such a manner.
+type {{$method.Name}}ClientDecoderWrapper struct {
+	Decoder Decoder
+}
+
+// Decode implements the Decode function required by {{$method.Name}}ClientDecoder.
+func (cdw {{$method.Name}}ClientDecoderWrapper) Decode(r io.Reader) ({{ $retType.ExType }}, error) {
+	recs, err := cdw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$retType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $retType.ExType}}, ErrDecodedUnknownType
+}
+
+// {{$method.Name}}Decoder implements the {{$method.Name}}Encoder by providing a wrapper around
+// a implementation of the Encoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Encoder which behaves in such a manner.
+type {{$method.Name}}EncoderWrapper struct {
+	Encoder Encoder
+}
+
+// Encode implements the Encode function required by {{$method.Name}}Encoder.
+func (ew {{$method.Name}}EncoderWrapper) Encode(w io.Writer, payload {{ $retType.ExType }}) error {
+	return ew.Encoder.Encode(w, payload)
+}
+
+// {{$method.Name}}ClientEncoderWrapper implements the {{$method.Name}}ClientEncoder by providing a wrapper around
+// a implementation of the ClientEncoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Encoder which behaves in such a manner.
+type {{$method.Name}}ClientEncoderWrapper struct {
+	Encoder Encoder
+}
+
+// Encode implements the Encode function required by {{$method.Name}}ClientEncoder.
+func (cew {{$method.Name}}ClientEncoderWrapper)	Encode(w io.Writer, payload {{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}) error {
+	return cew.Encoder.Encode(w, payload)
+}
+{{end}}
+{{range $_, $method := .InputAndOutputWithErrorMethods}}
+//****************************************************************************
+// RP: Input And Output Returning Error Encoders/Decoders
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+//****************************************************************************
+{{$retType := $method.GetReturnsAt 0}}
+// {{$method.Name}}Decoder implements the {{$method.Name}}Decoder by providing a wrapper around
+// a implementation of the Decoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Decoder which behaves in such a manner.
+type {{$method.Name}}DecoderWrapper struct {
+	Decoder Decoder
+}
+
+// Decode implements the Decode function required by {{$method.Name}}Decoder.
+func (dw {{$method.Name}}DecoderWrapper) Decode(r io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error) {
+	{{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}recs, err := dw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $argType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$argType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $argType.ExType}}, ErrDecodedUnknownType{{else}}{{$argType := $method.GetArgsAt 0}}
+	recs, err := dw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $argType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$argType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $argType.ExType}}, ErrDecodedUnknownType{{end}}
+}
+
+// {{$method.Name}}JSONDecoder implements a wrapper over the encoding/json JSONDecoder to
+// match the Decoder interface. This allow us use JSON has a decoding for any method decoding as
+// needed. This specifically decodes incoming data into wanted type.
+type {{$method.Name}}JSONDecoder struct{}
+
+// Decode implements the necessary logic to use json for decoding.
+func ({{$method.Name}}JSONDecoder) Decode(r io.Reader) (interface{}, error) {
+{{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}var res {{$argType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err{{else}}{{$argType := $method.GetArgsAt 0}}
+	var res {{$argType.ExType}}
+	err := json.NewDecoder(r).Decode(&res)
+	return res, err{{end}}
+}
+
+// {{$method.Name}}ClientDecoderWrapper implements the {{$method.Name}}ClientDecoder by providing a wrapper around
+// a implementation of the ClientDecoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Decoder which behaves in such a manner.
+type {{$method.Name}}ClientDecoderWrapper struct {
+	Decoder Decoder
+}
+
+// Decode implements the Decode function required by {{$method.Name}}ClientDecoder.
+func (cdw {{$method.Name}}ClientDecoderWrapper) Decode(r io.Reader) ({{ $retType.ExType }}, error) {
+	recs, err := cdw.Decoder.Decode(r)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if wantedRecs, ok := recs.({{$retType.ExType}}); ok {
+		return wantedRecs, nil
+	}
+
+	return {{defaultGoType $retType.ExType}}, ErrDecodedUnknownType
+}
+
+// {{$method.Name}}Decoder implements the {{$method.Name}}Encoder by providing a wrapper around
+// a implementation of the Encoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Encoder which behaves in such a manner.
+type {{$method.Name}}EncoderWrapper struct {
+	Encoder Encoder
+}
+
+// Encode implements the Encode function required by {{$method.Name}}Encoder.
+func (ew {{$method.Name}}EncoderWrapper) Encode(w io.Writer, payload {{ $retType.ExType }}) error {
+	return ew.Encoder.Encode(w, payload)
+}
+
+// {{$method.Name}}ClientEncoderWrapper implements the {{$method.Name}}ClientEncoder by providing a wrapper around
+// a implementation of the ClientEncoder interface which returns a `interface{}` type. This allows us
+// wrap around things like the JSON.Encoder which behaves in such a manner.
+type {{$method.Name}}ClientEncoderWrapper struct {
+	Encoder Encoder
+}
+
+// Encode implements the Encode function required by {{$method.Name}}ClientEncoder.
+func (cew {{$method.Name}}ClientEncoderWrapper)	Encode(w io.Writer, payload {{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}) error {
+	return cew.Encoder.Encode(w, payload)
+}
+{{end}}

@@ -138,6 +138,47 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 		}
 	}
 
+	encodingGen := gen.Package(
+		gen.Name(packageName),
+		gen.Imports(),
+		gen.Block(
+			gen.SourceTextWith(
+				"rpkit:encoding_rpc",
+				string(static.MustReadFile("encoding_rpc.tml", true)),
+				ast.ASTTemplatFuncs,
+				struct {
+					ServiceName                    string
+					TargetPackage                  string
+					ImplPackageName                string
+					An                             ast.AnnotationDeclaration
+					Itr                            ast.InterfaceDeclaration
+					Pkg                            ast.PackageDeclaration
+					NoArgAndReturns                []ast.FunctionDefinition
+					OnlyErrorMethods               []ast.FunctionDefinition
+					OutputWithErrorMethods         []ast.FunctionDefinition
+					OutputWithNoErrorMethods       []ast.FunctionDefinition
+					InputWithErrorMethods          []ast.FunctionDefinition
+					InputAndOutputMethods          []ast.FunctionDefinition
+					InputAndOutputWithErrorMethods []ast.FunctionDefinition
+				}{
+					An:                             an,
+					Itr:                            in,
+					Pkg:                            declr,
+					ImplPackageName:                packageName,
+					TargetPackage:                  packagePath,
+					OnlyErrorMethods:               onlyErrorMethods,
+					NoArgAndReturns:                noArgNoReturnMethods,
+					OutputWithNoErrorMethods:       outputWithNoErrorMethods,
+					OutputWithErrorMethods:         outputWithErrorMethods,
+					InputWithErrorMethods:          inputWithOnlyErrorMethods,
+					InputAndOutputMethods:          inputWithOutputOnlyMethods,
+					InputAndOutputWithErrorMethods: inputWithOutputWithErrorMethods,
+					ServiceName:                    strings.Join(sections, "."),
+				},
+			),
+		),
+	)
+
 	iGen := gen.Package(
 		gen.Name(packageName),
 		gen.Imports(),
@@ -184,6 +225,11 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 			Dir:      packageName,
 			FileName: packageFileName,
 			Writer:   fmtwriter.New(iGen, true, true),
+		},
+		{
+			Dir:      packageName,
+			FileName: "encoding.rp.go",
+			Writer:   fmtwriter.New(encodingGen, true, true),
 		},
 	}, nil
 }
