@@ -2,11 +2,11 @@ package userservicerp
 
 // All code below are auto-generated and should not be edited by handle.
 // See https://github.com/gokit/rpkit for more info.
-  
+
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -34,10 +34,10 @@ const (
 
 // errors ...
 var (
-	ErrNotInContext = errors.New("item not in context")
-	ErrInvalidRequestURI = errors.New("invalid request uri")
-	ErrBadRequest = errors.New("server rejected request as bad")
-	ErrInvalidRequestMethod = errors.New("invalid request method")
+	ErrNotInContext          = errors.New("item not in context")
+	ErrInvalidRequestURI     = errors.New("invalid request uri")
+	ErrBadRequest            = errors.New("server rejected request as bad")
+	ErrInvalidRequestMethod  = errors.New("invalid request method")
 	ErrServerInternalProblem = errors.New("server had internal problems")
 	ErrServerRejectedRequest = errors.New("server does not handle request type/method")
 )
@@ -48,22 +48,22 @@ var (
 
 // sets of context keys used by the package.
 const (
-	contextCustomHeaderKey = "rp:custom:header"
-	contextRequestKey = "rp:request"
-	contextRequestMethodKey = "rp:request:method"
-	contextRequestHeaderKey = "rp:request:header"
-	contextResponseWriterKey = "rp:response:writer"
-	contextServiceNameKey = "rp:service:name"
-	contextServicePathKey = "rp:service:path"
-	contextServicePackageKey = "rp:service:package"
-	contextServicePackageNameKey = "rp:service:package:name"
-	contextServiceSourcePackageKey = "rp:service:source:path"
+	contextCustomHeaderKey             = "rp:custom:header"
+	contextRequestKey                  = "rp:request"
+	contextRequestMethodKey            = "rp:request:method"
+	contextRequestHeaderKey            = "rp:request:header"
+	contextResponseWriterKey           = "rp:response:writer"
+	contextServiceNameKey              = "rp:service:name"
+	contextServicePathKey              = "rp:service:path"
+	contextServicePackageKey           = "rp:service:package"
+	contextServicePackageNameKey       = "rp:service:package:name"
+	contextServiceSourcePackageKey     = "rp:service:source:path"
 	contextServiceSourcePackageNameKey = "rp:service:source:package"
-	contextServiceMethodNameKey = "rp:service:method:name"
-	contextServiceMethodPathKey = "rp:service:method:path"
-	contextServiceMethodRouteKey = "rp:service:method:route"
-	contextClientRequestURLKey = "rp:client:request:url"
-	contextRequestTransportKey = "rp:request:transport"
+	contextServiceMethodNameKey        = "rp:service:method:name"
+	contextServiceMethodPathKey        = "rp:service:method:path"
+	contextServiceMethodRouteKey       = "rp:service:method:route"
+	contextClientRequestURLKey         = "rp:client:request:url"
+	contextRequestTransportKey         = "rp:request:transport"
 )
 
 // CtxRequestTransport retrieves if any set RequestTransport string from context.
@@ -325,8 +325,8 @@ const MakeAdminContractSource = `type MakeAdminMethodContract interface {
 // MakeAdminMethodContract defines a contract interface for method "MakeAdmin"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type MakeAdminMethodContract interface{
-	MakeAdmin(var1 context.Context) 
+type MakeAdminMethodContract interface {
+	MakeAdmin(var1 context.Context)
 }
 
 // MakeAdminMethodService defines the returned signature by the ServiceMakeAdmin
@@ -338,9 +338,9 @@ type MakeAdminMethodService func(context.Context) error
 // that can then be used within any transport layer, to said execute behaviour of method as a service.
 func ServeMakeAdminMethod(provider MakeAdminMethodContract) MakeAdminMethodService {
 	return func(ctx context.Context) error {
-		
+
 		provider.MakeAdmin(ctx)
-		
+
 		return nil
 	}
 }
@@ -366,26 +366,26 @@ func NewMakeAdminMethodContractClient(addr string, client *http.Client, act ActW
 	}
 
 	return implMakeAdminClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implMakeAdminClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 }
 
 // MakeAdmin makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implMakeAdminClient) MakeAdmin(var1 context.Context) error{
+func (imp implMakeAdminClient) MakeAdmin(var1 context.Context) error {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(makeadminServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -438,7 +438,6 @@ func (imp implMakeAdminClient) MakeAdmin(var1 context.Context) error{
 		}
 		return ErrServerRejectedRequest
 	}
-	
 
 	return nil
 }
@@ -450,7 +449,7 @@ type MakeAdminServer interface {
 }
 
 type implMakeAdminHandler struct {
-	hook Hook
+	hook    Hook
 	headers http.Header
 	service MakeAdminMethodService
 }
@@ -459,7 +458,7 @@ type implMakeAdminHandler struct {
 // http requests for giving method users.UserService.MakeAdmin.
 func NewMakeAdminServer(service MakeAdminMethodService, hook Hook, headers http.Header) MakeAdminServer {
 	return implMakeAdminHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -493,12 +492,12 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "MakeAdmin",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "MakeAdmin",
 			"api_service": MethodServiceName,
-			"route": MakeAdminServiceRoute,
-			"api": "users.UserService",
+			"route":       MakeAdminServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -528,12 +527,12 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+MakeAdminServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "MakeAdmin",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "MakeAdmin",
 			"api_service": MethodServiceName,
-			"route": MakeAdminServiceRoute,
-			"api": "users.UserService",
+			"route":       MakeAdminServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -561,17 +560,17 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "MakeAdmin",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "MakeAdmin",
 					"api_service": MethodServiceName,
-					"route": MakeAdminServiceRoute,
-					"api": "users.UserService",
+					"route":       MakeAdminServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -586,12 +585,12 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "MakeAdmin",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "MakeAdmin",
 			"api_service": MethodServiceName,
-			"route": MakeAdminServiceRoute,
-			"api": "users.UserService",
+			"route":       MakeAdminServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -602,7 +601,6 @@ func (impl implMakeAdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		impl.hook.ResponseSent(ctx)
 	}
 }
-
 
 //****************************************************************************
 // RP: Error Returning methods
@@ -630,8 +628,8 @@ const EnableSMSContractSource = `type EnableSMSMethodContract interface {
 // EnableSMSMethodContract defines a contract interface for method "EnableSMS"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type EnableSMSMethodContract interface{
-	EnableSMS(var1 context.Context)  error  
+type EnableSMSMethodContract interface {
+	EnableSMS(var1 context.Context) error
 }
 
 // EnableSMSMethodService defines the returned signature by the ServiceEnableSMS
@@ -643,15 +641,15 @@ type EnableSMSMethodService func(context.Context) error
 // that can then be used within any transport layer, to said execute behaviour of method as a service.
 func ServeEnableSMSMethod(provider EnableSMSMethodContract) EnableSMSMethodService {
 	return func(ctx context.Context) error {
-		
+
 		return provider.EnableSMS(ctx)
-		
+
 	}
 }
 
 // EnableSMSClientContract defines a contract interface for clients to make request to EnableSMSServer.
 type EnableSMSClientContract interface {
-	EnableSMS(var1 context.Context) (error)
+	EnableSMS(var1 context.Context) error
 }
 
 // NewEnableSMSMethodClient returns a new EnableSMSMethodContract it relies on
@@ -670,26 +668,26 @@ func NewEnableSMSMethodContractClient(addr string, client *http.Client, act ActW
 	}
 
 	return implEnableSMSClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implEnableSMSClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 }
 
 // EnableSMS makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implEnableSMSClient) EnableSMS(var1 context.Context) (error){
+func (imp implEnableSMSClient) EnableSMS(var1 context.Context) error {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(enablesmsServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -742,7 +740,6 @@ func (imp implEnableSMSClient) EnableSMS(var1 context.Context) (error){
 		}
 		return ErrServerRejectedRequest
 	}
-	
 
 	return nil
 }
@@ -753,8 +750,8 @@ type EnableSMSServer interface {
 	http.Handler
 }
 
-type implEnableSMSHandler struct{
-	hook Hook
+type implEnableSMSHandler struct {
+	hook    Hook
 	headers http.Header
 	service EnableSMSMethodService
 }
@@ -763,7 +760,7 @@ type implEnableSMSHandler struct{
 // http requests for giving method users.UserService.EnableSMS.
 func NewEnableSMSServer(service EnableSMSMethodService, hook Hook, headers http.Header) EnableSMSServer {
 	return implEnableSMSHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -797,12 +794,12 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "EnableSMS",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "EnableSMS",
 			"api_service": MethodServiceName,
-			"route": EnableSMSServiceRoute,
-			"api": "users.UserService",
+			"route":       EnableSMSServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -832,12 +829,12 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+EnableSMSServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "EnableSMS",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "EnableSMS",
 			"api_service": MethodServiceName,
-			"route": EnableSMSServiceRoute,
-			"api": "users.UserService",
+			"route":       EnableSMSServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -865,17 +862,17 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "EnableSMS",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "EnableSMS",
 					"api_service": MethodServiceName,
-					"route": EnableSMSServiceRoute,
-					"api": "users.UserService",
+					"route":       EnableSMSServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -890,16 +887,15 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "EnableSMS",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "EnableSMS",
 			"api_service": MethodServiceName,
-			"route": EnableSMSServiceRoute,
-			"api": "users.UserService",
+			"route":       EnableSMSServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
-
 
 	w.WriteHeader(http.StatusOK)
 
@@ -907,7 +903,6 @@ func (impl implEnableSMSHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		impl.hook.ResponseSent(ctx)
 	}
 }
-
 
 //****************************************************************************
 // RP: Output with Returning Error methods
@@ -935,13 +930,13 @@ const RaiseContractSource = `type RaiseMethodContract interface {
 // RaiseMethodContract defines a contract interface for method "Raise"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type RaiseMethodContract interface{
-	Raise(var1 context.Context)  (string,error)  
+type RaiseMethodContract interface {
+	Raise(var1 context.Context) (string, error)
 }
 
 // RaiseEncoder defines a interface which expose a single method to encode the response
 // returned by RaiseMethodContract.Raise.
-type RaiseEncoder interface{
+type RaiseEncoder interface {
 	Encode(io.Writer, string) error
 }
 
@@ -955,9 +950,9 @@ type RaiseMethodService func(context.Context, io.Writer) error
 // behaviour of method as a service.
 func ServeRaiseMethod(provider RaiseMethodContract, encoder RaiseEncoder) RaiseMethodService {
 	return func(ctx context.Context, w io.Writer) error {
-		
+
 		res, err := provider.Raise(ctx)
-		
+
 		if err != nil {
 			return err
 		}
@@ -967,12 +962,12 @@ func ServeRaiseMethod(provider RaiseMethodContract, encoder RaiseEncoder) RaiseM
 
 // RaiseClientContract defines a contract interface for clients to make request to RaiseServer.
 type RaiseClientContract interface {
-	Raise(var1 context.Context) (string,error)
+	Raise(var1 context.Context) (string, error)
 }
 
 // RaiseClientDecoder defines a interface which expose a single method to decode the response
 // returned by RaiseClientContract.Raise.
-type RaiseClientDecoder interface{
+type RaiseClientDecoder interface {
 	Decode(io.Reader) (string, error)
 }
 
@@ -992,28 +987,28 @@ func NewRaiseMethodContractClient(addr string, client *http.Client, decoder Rais
 	}
 
 	return implRaiseClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
 		decoder: decoder,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implRaiseClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 	decoder RaiseClientDecoder
 }
 
 // Raise makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implRaiseClient) Raise(var1 context.Context) (string,error){
+func (imp implRaiseClient) Raise(var1 context.Context) (string, error) {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(raiseServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -1081,8 +1076,8 @@ type RaiseServer interface {
 	http.Handler
 }
 
-type implRaiseHandler struct{
-	hook Hook
+type implRaiseHandler struct {
+	hook    Hook
 	headers http.Header
 	service RaiseMethodService
 }
@@ -1091,7 +1086,7 @@ type implRaiseHandler struct{
 // http requests for giving method users.UserService.Raise.
 func NewRaiseServer(service RaiseMethodService, hook Hook, headers http.Header) RaiseServer {
 	return implRaiseHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -1125,12 +1120,12 @@ func (impl implRaiseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Raise",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Raise",
 			"api_service": MethodServiceName,
-			"route": RaiseServiceRoute,
-			"api": "users.UserService",
+			"route":       RaiseServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1160,12 +1155,12 @@ func (impl implRaiseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+RaiseServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Raise",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Raise",
 			"api_service": MethodServiceName,
-			"route": RaiseServiceRoute,
-			"api": "users.UserService",
+			"route":       RaiseServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1193,17 +1188,17 @@ func (impl implRaiseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("X-Package-Interface", "users.UserService")
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "Raise",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "Raise",
 					"api_service": MethodServiceName,
-					"route": RaiseServiceRoute,
-					"api": "users.UserService",
+					"route":       RaiseServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -1218,12 +1213,12 @@ func (impl implRaiseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Raise",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Raise",
 			"api_service": MethodServiceName,
-			"route": RaiseServiceRoute,
-			"api": "users.UserService",
+			"route":       RaiseServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1233,8 +1228,6 @@ func (impl implRaiseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		impl.hook.ResponseSent(ctx)
 	}
 }
-
-
 
 //****************************************************************************
 // RP: Input Returning Only Error methods
@@ -1262,13 +1255,13 @@ const DeleteContractSource = `type DeleteMethodContract interface {
 // DeleteMethodContract defines a contract interface for method "Delete"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type DeleteMethodContract interface{
-	Delete(var1 context.Context,var2 string)  error  
+type DeleteMethodContract interface {
+	Delete(var1 context.Context, var2 string) error
 }
 
 // DeleteDecoder defines a interface which expose a single method to decode the request data
 // expected by DeleteMethodContract.Delete.
-type DeleteDecoder interface{
+type DeleteDecoder interface {
 	Decode(io.Reader) (string, error)
 }
 
@@ -1287,21 +1280,20 @@ func ServeDeleteMethod(provider DeleteMethodContract, decoder DeleteDecoder) Del
 			return err
 		}
 
-		
 		return provider.Delete(ctx, input)
-		
+
 	}
 }
 
 // DeleteClientEncoder defines a interface which expose a single method to encode the request
 // data sent by DeleteClientContract.Delete.
-type DeleteClientEncoder interface{
+type DeleteClientEncoder interface {
 	Encode(io.Writer, string) error
 }
 
 // DeleteClientContract defines a contract interface for clients to make request to DeleteServer.
 type DeleteClientContract interface {
-	Delete(var1 context.Context,var2 string) (error)
+	Delete(var1 context.Context, var2 string) error
 }
 
 // NewDeleteMethodClient returns a new DeleteMethodContract it relies on
@@ -1320,28 +1312,28 @@ func NewDeleteMethodContractClient(addr string, client *http.Client, encoder Del
 	}
 
 	return implDeleteClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
 		encoder: encoder,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implDeleteClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 	encoder DeleteClientEncoder
 }
 
 // Delete makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implDeleteClient) Delete(var1 context.Context,var2 string) (error){
+func (imp implDeleteClient) Delete(var1 context.Context, var2 string) error {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(deleteServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -1399,7 +1391,6 @@ func (imp implDeleteClient) Delete(var1 context.Context,var2 string) (error){
 		}
 		return ErrServerRejectedRequest
 	}
-	
 
 	return nil
 }
@@ -1410,8 +1401,8 @@ type DeleteServer interface {
 	http.Handler
 }
 
-type implDeleteHandler struct{
-	hook Hook
+type implDeleteHandler struct {
+	hook    Hook
 	headers http.Header
 	service DeleteMethodService
 }
@@ -1420,7 +1411,7 @@ type implDeleteHandler struct{
 // http requests for giving method users.UserService.Delete.
 func NewDeleteServer(service DeleteMethodService, hook Hook, headers http.Header) DeleteServer {
 	return implDeleteHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -1456,12 +1447,12 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Delete",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Delete",
 			"api_service": MethodServiceName,
-			"route": DeleteServiceRoute,
-			"api": "users.UserService",
+			"route":       DeleteServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1491,12 +1482,12 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+DeleteServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Delete",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Delete",
 			"api_service": MethodServiceName,
-			"route": DeleteServiceRoute,
-			"api": "users.UserService",
+			"route":       DeleteServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1526,17 +1517,17 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "Delete",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "Delete",
 					"api_service": MethodServiceName,
-					"route": DeleteServiceRoute,
-					"api": "users.UserService",
+					"route":       DeleteServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -1551,12 +1542,12 @@ func (impl implDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Delete",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Delete",
 			"api_service": MethodServiceName,
-			"route": DeleteServiceRoute,
-			"api": "users.UserService",
+			"route":       DeleteServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1592,13 +1583,13 @@ const UpdateContractSource = `type UpdateMethodContract interface {
 // UpdateMethodContract defines a contract interface for method "Update"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type UpdateMethodContract interface{
-	Update(var1 context.Context,var2 users.UpdateUser)  error  
+type UpdateMethodContract interface {
+	Update(var1 context.Context, var2 users.UpdateUser) error
 }
 
 // UpdateDecoder defines a interface which expose a single method to decode the request data
 // expected by UpdateMethodContract.Update.
-type UpdateDecoder interface{
+type UpdateDecoder interface {
 	Decode(io.Reader) (users.UpdateUser, error)
 }
 
@@ -1617,21 +1608,20 @@ func ServeUpdateMethod(provider UpdateMethodContract, decoder UpdateDecoder) Upd
 			return err
 		}
 
-		
 		return provider.Update(ctx, input)
-		
+
 	}
 }
 
 // UpdateClientEncoder defines a interface which expose a single method to encode the request
 // data sent by UpdateClientContract.Update.
-type UpdateClientEncoder interface{
+type UpdateClientEncoder interface {
 	Encode(io.Writer, users.UpdateUser) error
 }
 
 // UpdateClientContract defines a contract interface for clients to make request to UpdateServer.
 type UpdateClientContract interface {
-	Update(var1 context.Context,var2 users.UpdateUser) (error)
+	Update(var1 context.Context, var2 users.UpdateUser) error
 }
 
 // NewUpdateMethodClient returns a new UpdateMethodContract it relies on
@@ -1650,28 +1640,28 @@ func NewUpdateMethodContractClient(addr string, client *http.Client, encoder Upd
 	}
 
 	return implUpdateClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
 		encoder: encoder,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implUpdateClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 	encoder UpdateClientEncoder
 }
 
 // Update makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implUpdateClient) Update(var1 context.Context,var2 users.UpdateUser) (error){
+func (imp implUpdateClient) Update(var1 context.Context, var2 users.UpdateUser) error {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(updateServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -1729,7 +1719,6 @@ func (imp implUpdateClient) Update(var1 context.Context,var2 users.UpdateUser) (
 		}
 		return ErrServerRejectedRequest
 	}
-	
 
 	return nil
 }
@@ -1740,8 +1729,8 @@ type UpdateServer interface {
 	http.Handler
 }
 
-type implUpdateHandler struct{
-	hook Hook
+type implUpdateHandler struct {
+	hook    Hook
 	headers http.Header
 	service UpdateMethodService
 }
@@ -1750,7 +1739,7 @@ type implUpdateHandler struct{
 // http requests for giving method users.UserService.Update.
 func NewUpdateServer(service UpdateMethodService, hook Hook, headers http.Header) UpdateServer {
 	return implUpdateHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -1786,12 +1775,12 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Update",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Update",
 			"api_service": MethodServiceName,
-			"route": UpdateServiceRoute,
-			"api": "users.UserService",
+			"route":       UpdateServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1821,12 +1810,12 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+UpdateServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Update",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Update",
 			"api_service": MethodServiceName,
-			"route": UpdateServiceRoute,
-			"api": "users.UserService",
+			"route":       UpdateServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1856,17 +1845,17 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "Update",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "Update",
 					"api_service": MethodServiceName,
-					"route": UpdateServiceRoute,
-					"api": "users.UserService",
+					"route":       UpdateServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -1881,12 +1870,12 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Update",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Update",
 			"api_service": MethodServiceName,
-			"route": UpdateServiceRoute,
-			"api": "users.UserService",
+			"route":       UpdateServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -1895,8 +1884,6 @@ func (impl implUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		impl.hook.ResponseSent(ctx)
 	}
 }
-
-
 
 //****************************************************************************
 // RP: Input And Output Returning Error methods
@@ -1924,19 +1911,19 @@ const GetContractSource = `type GetMethodContract interface {
 // GetMethodContract defines a contract interface for method "Get"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type GetMethodContract interface{
-	Get(var1 context.Context,var2 string)  (users.User,error)  
+type GetMethodContract interface {
+	Get(var1 context.Context, var2 string) (users.User, error)
 }
 
 // GetDecoder defines a interface which expose a single method to decode the request data
 // expected by GetMethodContract.Get.
-type GetDecoder interface{
+type GetDecoder interface {
 	Decode(io.Reader) (string, error)
 }
 
 // GetEncoder defines a interface which expose a single method to encode the response
 // returned by GetMethodContract.Get.
-type GetEncoder interface{
+type GetEncoder interface {
 	Encode(io.Writer, users.User) error
 }
 
@@ -1955,9 +1942,8 @@ func ServeGetMethod(provider GetMethodContract, encoder GetEncoder, decoder GetD
 			return err
 		}
 
-		
 		res, err := provider.Get(ctx, input)
-		
+
 		if err != nil {
 			return err
 		}
@@ -1968,19 +1954,19 @@ func ServeGetMethod(provider GetMethodContract, encoder GetEncoder, decoder GetD
 
 // GetClientEncoder defines a interface which expose a single method to encode the request
 // data sent by GetClientContract.Get.
-type GetClientEncoder interface{
+type GetClientEncoder interface {
 	Encode(io.Writer, string) error
 }
 
 // GetClientDecoder defines a interface which expose a single method to decode the response
 // returned by GetClientContract.Get.
-type GetClientDecoder interface{
+type GetClientDecoder interface {
 	Decode(io.Reader) (users.User, error)
 }
 
 // GetClientContract defines a contract interface for clients to make request to GetServer.
 type GetClientContract interface {
-	Get(var1 context.Context,var2 string) (users.User,error)
+	Get(var1 context.Context, var2 string) (users.User, error)
 }
 
 // NewGetMethodClient returns a new GetMethodContract it relies on
@@ -1999,30 +1985,30 @@ func NewGetMethodContractClient(addr string, client *http.Client, encoder GetCli
 	}
 
 	return implGetClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
 		encoder: encoder,
 		decoder: decoder,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implGetClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 	encoder GetClientEncoder
 	decoder GetClientDecoder
 }
 
 // Get makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implGetClient) Get(var1 context.Context,var2 string) (users.User,error){
+func (imp implGetClient) Get(var1 context.Context, var2 string) (users.User, error) {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(getServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -2049,36 +2035,36 @@ func (imp implGetClient) Get(var1 context.Context,var2 string) (users.User,error
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return users.User{},err
+		return users.User{}, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return users.User{},err
+			return users.User{}, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{},jsonErr
+			return users.User{}, jsonErr
 		}
-		return users.User{},ErrServerInternalProblem
+		return users.User{}, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{},jsonErr
+			return users.User{}, jsonErr
 		}
-		return users.User{},ErrBadRequest
+		return users.User{}, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{},jsonErr
+			return users.User{}, jsonErr
 		}
-		return users.User{},ErrServerRejectedRequest
+		return users.User{}, ErrServerRejectedRequest
 	}
 
 	rec, err := imp.decoder.Decode(res.Body)
@@ -2087,7 +2073,7 @@ func (imp implGetClient) Get(var1 context.Context,var2 string) (users.User,error
 	}
 
 	return rec, nil
-	
+
 }
 
 // GetServer implements a http.Handler for servicing the method Get
@@ -2096,8 +2082,8 @@ type GetServer interface {
 	http.Handler
 }
 
-type implGetHandler struct{
-	hook Hook
+type implGetHandler struct {
+	hook    Hook
 	headers http.Header
 	service GetMethodService
 }
@@ -2106,7 +2092,7 @@ type implGetHandler struct{
 // http requests for giving method users.UserService.Get.
 func NewGetServer(service GetMethodService, hook Hook, headers http.Header) GetServer {
 	return implGetHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -2142,12 +2128,12 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Get",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Get",
 			"api_service": MethodServiceName,
-			"route": GetServiceRoute,
-			"api": "users.UserService",
+			"route":       GetServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2177,12 +2163,12 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+GetServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Get",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Get",
 			"api_service": MethodServiceName,
-			"route": GetServiceRoute,
-			"api": "users.UserService",
+			"route":       GetServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2212,17 +2198,17 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "Get",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "Get",
 					"api_service": MethodServiceName,
-					"route": GetServiceRoute,
-					"api": "users.UserService",
+					"route":       GetServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -2237,12 +2223,12 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Get",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Get",
 			"api_service": MethodServiceName,
-			"route": GetServiceRoute,
-			"api": "users.UserService",
+			"route":       GetServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2278,19 +2264,19 @@ const CreateContractSource = `type CreateMethodContract interface {
 // CreateMethodContract defines a contract interface for method "Create"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type CreateMethodContract interface{
-	Create(var1 context.Context,var2 users.NewUser)  (users.User,error)  
+type CreateMethodContract interface {
+	Create(var1 context.Context, var2 users.NewUser) (users.User, error)
 }
 
 // CreateDecoder defines a interface which expose a single method to decode the request data
 // expected by CreateMethodContract.Create.
-type CreateDecoder interface{
+type CreateDecoder interface {
 	Decode(io.Reader) (users.NewUser, error)
 }
 
 // CreateEncoder defines a interface which expose a single method to encode the response
 // returned by CreateMethodContract.Create.
-type CreateEncoder interface{
+type CreateEncoder interface {
 	Encode(io.Writer, users.User) error
 }
 
@@ -2309,9 +2295,8 @@ func ServeCreateMethod(provider CreateMethodContract, encoder CreateEncoder, dec
 			return err
 		}
 
-		
 		res, err := provider.Create(ctx, input)
-		
+
 		if err != nil {
 			return err
 		}
@@ -2322,19 +2307,19 @@ func ServeCreateMethod(provider CreateMethodContract, encoder CreateEncoder, dec
 
 // CreateClientEncoder defines a interface which expose a single method to encode the request
 // data sent by CreateClientContract.Create.
-type CreateClientEncoder interface{
+type CreateClientEncoder interface {
 	Encode(io.Writer, users.NewUser) error
 }
 
 // CreateClientDecoder defines a interface which expose a single method to decode the response
 // returned by CreateClientContract.Create.
-type CreateClientDecoder interface{
+type CreateClientDecoder interface {
 	Decode(io.Reader) (users.User, error)
 }
 
 // CreateClientContract defines a contract interface for clients to make request to CreateServer.
 type CreateClientContract interface {
-	Create(var1 context.Context,var2 users.NewUser) (users.User,error)
+	Create(var1 context.Context, var2 users.NewUser) (users.User, error)
 }
 
 // NewCreateMethodClient returns a new CreateMethodContract it relies on
@@ -2353,30 +2338,30 @@ func NewCreateMethodContractClient(addr string, client *http.Client, encoder Cre
 	}
 
 	return implCreateClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
 		encoder: encoder,
 		decoder: decoder,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implCreateClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 	encoder CreateClientEncoder
 	decoder CreateClientDecoder
 }
 
 // Create makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implCreateClient) Create(var1 context.Context,var2 users.NewUser) (users.User,error){
+func (imp implCreateClient) Create(var1 context.Context, var2 users.NewUser) (users.User, error) {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(createServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -2403,36 +2388,36 @@ func (imp implCreateClient) Create(var1 context.Context,var2 users.NewUser) (use
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return users.User{},err
+		return users.User{}, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return users.User{},err
+			return users.User{}, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{},jsonErr
+			return users.User{}, jsonErr
 		}
-		return users.User{},ErrServerInternalProblem
+		return users.User{}, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{},jsonErr
+			return users.User{}, jsonErr
 		}
-		return users.User{},ErrBadRequest
+		return users.User{}, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{},jsonErr
+			return users.User{}, jsonErr
 		}
-		return users.User{},ErrServerRejectedRequest
+		return users.User{}, ErrServerRejectedRequest
 	}
 
 	rec, err := imp.decoder.Decode(res.Body)
@@ -2441,7 +2426,7 @@ func (imp implCreateClient) Create(var1 context.Context,var2 users.NewUser) (use
 	}
 
 	return rec, nil
-	
+
 }
 
 // CreateServer implements a http.Handler for servicing the method Create
@@ -2450,8 +2435,8 @@ type CreateServer interface {
 	http.Handler
 }
 
-type implCreateHandler struct{
-	hook Hook
+type implCreateHandler struct {
+	hook    Hook
 	headers http.Header
 	service CreateMethodService
 }
@@ -2460,7 +2445,7 @@ type implCreateHandler struct{
 // http requests for giving method users.UserService.Create.
 func NewCreateServer(service CreateMethodService, hook Hook, headers http.Header) CreateServer {
 	return implCreateHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -2496,12 +2481,12 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Create",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Create",
 			"api_service": MethodServiceName,
-			"route": CreateServiceRoute,
-			"api": "users.UserService",
+			"route":       CreateServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2531,12 +2516,12 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+CreateServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Create",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Create",
 			"api_service": MethodServiceName,
-			"route": CreateServiceRoute,
-			"api": "users.UserService",
+			"route":       CreateServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2566,17 +2551,17 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "Create",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "Create",
 					"api_service": MethodServiceName,
-					"route": CreateServiceRoute,
-					"api": "users.UserService",
+					"route":       CreateServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -2591,12 +2576,12 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "Create",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "Create",
 			"api_service": MethodServiceName,
-			"route": CreateServiceRoute,
-			"api": "users.UserService",
+			"route":       CreateServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2632,19 +2617,19 @@ const GetAllContractSource = `type GetAllMethodContract interface {
 // GetAllMethodContract defines a contract interface for method "GetAll"
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type GetAllMethodContract interface{
-	GetAll(var1 context.Context,var2 string)  ([]users.User,error)  
+type GetAllMethodContract interface {
+	GetAll(var1 context.Context, var2 string) ([]users.User, error)
 }
 
 // GetAllDecoder defines a interface which expose a single method to decode the request data
 // expected by GetAllMethodContract.GetAll.
-type GetAllDecoder interface{
+type GetAllDecoder interface {
 	Decode(io.Reader) (string, error)
 }
 
 // GetAllEncoder defines a interface which expose a single method to encode the response
 // returned by GetAllMethodContract.GetAll.
-type GetAllEncoder interface{
+type GetAllEncoder interface {
 	Encode(io.Writer, []users.User) error
 }
 
@@ -2663,9 +2648,8 @@ func ServeGetAllMethod(provider GetAllMethodContract, encoder GetAllEncoder, dec
 			return err
 		}
 
-		
 		res, err := provider.GetAll(ctx, input)
-		
+
 		if err != nil {
 			return err
 		}
@@ -2676,19 +2660,19 @@ func ServeGetAllMethod(provider GetAllMethodContract, encoder GetAllEncoder, dec
 
 // GetAllClientEncoder defines a interface which expose a single method to encode the request
 // data sent by GetAllClientContract.GetAll.
-type GetAllClientEncoder interface{
+type GetAllClientEncoder interface {
 	Encode(io.Writer, string) error
 }
 
 // GetAllClientDecoder defines a interface which expose a single method to decode the response
 // returned by GetAllClientContract.GetAll.
-type GetAllClientDecoder interface{
+type GetAllClientDecoder interface {
 	Decode(io.Reader) ([]users.User, error)
 }
 
 // GetAllClientContract defines a contract interface for clients to make request to GetAllServer.
 type GetAllClientContract interface {
-	GetAll(var1 context.Context,var2 string) ([]users.User,error)
+	GetAll(var1 context.Context, var2 string) ([]users.User, error)
 }
 
 // NewGetAllMethodClient returns a new GetAllMethodContract it relies on
@@ -2707,30 +2691,30 @@ func NewGetAllMethodContractClient(addr string, client *http.Client, encoder Get
 	}
 
 	return implGetAllClient{
-		actor: act,
-		resval: resv,
+		actor:   act,
+		resval:  resv,
 		rootURL: root,
 		encoder: encoder,
 		decoder: decoder,
-		client: skipRedirects(client),
+		client:  skipRedirects(client),
 	}, nil
 }
 
 type implGetAllClient struct {
 	rootURL *url.URL
-	client *http.Client
-	actor ActWithRequest
-	resval ResponseValidation
+	client  *http.Client
+	actor   ActWithRequest
+	resval  ResponseValidation
 	encoder GetAllClientEncoder
 	decoder GetAllClientDecoder
 }
 
 // GetAll makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implGetAllClient) GetAll(var1 context.Context,var2 string) ([]users.User,error){
+func (imp implGetAllClient) GetAll(var1 context.Context, var2 string) ([]users.User, error) {
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(getallServiceRoutePathURL)
-	
+
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
@@ -2757,36 +2741,36 @@ func (imp implGetAllClient) GetAll(var1 context.Context,var2 string) ([]users.Us
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return nil,err
+			return nil, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return nil,jsonErr
+			return nil, jsonErr
 		}
-		return nil,ErrServerInternalProblem
+		return nil, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return nil,jsonErr
+			return nil, jsonErr
 		}
-		return nil,ErrBadRequest
+		return nil, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return nil,jsonErr
+			return nil, jsonErr
 		}
-		return nil,ErrServerRejectedRequest
+		return nil, ErrServerRejectedRequest
 	}
 
 	rec, err := imp.decoder.Decode(res.Body)
@@ -2795,7 +2779,7 @@ func (imp implGetAllClient) GetAll(var1 context.Context,var2 string) ([]users.Us
 	}
 
 	return rec, nil
-	
+
 }
 
 // GetAllServer implements a http.Handler for servicing the method GetAll
@@ -2804,8 +2788,8 @@ type GetAllServer interface {
 	http.Handler
 }
 
-type implGetAllHandler struct{
-	hook Hook
+type implGetAllHandler struct {
+	hook    Hook
 	headers http.Header
 	service GetAllMethodService
 }
@@ -2814,7 +2798,7 @@ type implGetAllHandler struct{
 // http requests for giving method users.UserService.GetAll.
 func NewGetAllServer(service GetAllMethodService, hook Hook, headers http.Header) GetAllServer {
 	return implGetAllHandler{
-		hook: hook,
+		hook:    hook,
 		headers: headers,
 		service: service,
 	}
@@ -2850,12 +2834,12 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "GetAll",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "GetAll",
 			"api_service": MethodServiceName,
-			"route": GetAllServiceRoute,
-			"api": "users.UserService",
+			"route":       GetAllServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2885,12 +2869,12 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+GetAllServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "GetAll",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "GetAll",
 			"api_service": MethodServiceName,
-			"route": GetAllServiceRoute,
-			"api": "users.UserService",
+			"route":       GetAllServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2920,17 +2904,17 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
-	func(){
-		defer func(){
+	func() {
+		defer func() {
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package": "github.com/gokit/rpkit/examples/users",
-					"api_base": BaseServiceName,
-					"method": "GetAll",
+					"package":     "github.com/gokit/rpkit/examples/users",
+					"api_base":    BaseServiceName,
+					"method":      "GetAll",
 					"api_service": MethodServiceName,
-					"route": GetAllServiceRoute,
-					"api": "users.UserService",
+					"route":       GetAllServiceRoute,
+					"api":         "users.UserService",
 				})
 				panic(rerr)
 			}
@@ -2945,12 +2929,12 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
-			"package": "github.com/gokit/rpkit/examples/users",
-			"api_base": BaseServiceName,
-			"method": "GetAll",
+			"package":     "github.com/gokit/rpkit/examples/users",
+			"api_base":    BaseServiceName,
+			"method":      "GetAll",
 			"api_service": MethodServiceName,
-			"route": GetAllServiceRoute,
-			"api": "users.UserService",
+			"route":       GetAllServiceRoute,
+			"api":         "users.UserService",
 		})
 		return
 	}
@@ -2960,36 +2944,35 @@ func (impl implGetAllHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-
 //****************************************************************************
 // Utils
 // Source: github.com/gokit/rpkit/examples/users
 //****************************************************************************
 
 func requestRedirected(res *http.Response) bool {
-	if res.StatusCode >= 300 && res.StatusCode <= 308  {
-		 return true
+	if res.StatusCode >= 300 && res.StatusCode <= 308 {
+		return true
 	}
 	return false
 }
 
 func requestFailed(res *http.Response) bool {
 	if res.StatusCode >= 400 && res.StatusCode < 500 {
-		 return true
+		return true
 	}
 	return false
 }
 
 func requestFacedInternalIssues(res *http.Response) bool {
 	if res.StatusCode >= 500 && res.StatusCode < 600 {
-		 return true
+		return true
 	}
 	return false
 }
 
 func requestSucceeded(res *http.Response) bool {
 	if res.StatusCode >= 200 && res.StatusCode <= 299 {
-		 return true
+		return true
 	}
 	return false
 }
@@ -2998,8 +2981,10 @@ func requestSucceeded(res *http.Response) bool {
 // if an error occured.
 func mustParseURL(addr string) *url.URL {
 	parsed, err := parseURL(addr)
-	if err == nil { return parsed }
-	panic(`failed to parse url: `+addr+` , error occurred: `+err.Error())
+	if err == nil {
+		return parsed
+	}
+	panic(`failed to parse url: ` + addr + ` , error occurred: ` + err.Error())
 }
 
 // parseURL parses giving address returning *url.URL instance for address if
@@ -3027,13 +3012,12 @@ func joinURL(root *url.URL, addr string) (*url.URL, error) {
 		return nil, err
 	}
 
-	if parsed.IsAbs(){
+	if parsed.IsAbs() {
 		parsed = root.ResolveReference(parsed)
 	}
 
 	return parsed, nil
 }
-
 
 // skipRedirects copies giving http.Client and fix issue with possible redirects
 // in go1.8 when a post receives a status code which is undesired. Such has 302, 303,
@@ -3058,7 +3042,7 @@ func loadJSONError(r io.Reader) (jsonErrorResponse, error) {
 	return res, nil
 }
 
-func jsonWriteError(w http.ResponseWriter, code int, message string, err error, meta map[string]interface{}){
+func jsonWriteError(w http.ResponseWriter, code int, message string, err error, meta map[string]interface{}) {
 	var res jsonErrorResponse
 	res.Code = code
 	res.Err = err
@@ -3068,7 +3052,7 @@ func jsonWriteError(w http.ResponseWriter, code int, message string, err error, 
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
 
-	data, err2 := json.Marshal(res);
+	data, err2 := json.Marshal(res)
 	if err2 == nil {
 		w.Write(data)
 		return
@@ -3077,14 +3061,13 @@ func jsonWriteError(w http.ResponseWriter, code int, message string, err error, 
 	log.Printf("unable to send error response for error %+q: %+q", err, err2)
 }
 
-type jsonErrorResponse struct{
-	Code int `json:"code"`
-	Err error `json:"err"`
-	Message string `json:"message"`
-	Meta map[string]interface{} `json:"meta"`
+type jsonErrorResponse struct {
+	Code    int                    `json:"code"`
+	Err     error                  `json:"err"`
+	Message string                 `json:"message"`
+	Meta    map[string]interface{} `json:"meta"`
 }
 
 func (jse jsonErrorResponse) Error() string {
 	return jse.Message + " " + jse.Err.Error()
 }
-

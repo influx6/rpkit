@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/influx6/faux/fmtwriter"
+
 	"github.com/gokit/rpkit/static"
 
 	"github.com/influx6/moz/ast"
@@ -179,9 +181,9 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 
 	return []gen.WriteDirective{
 		{
-			Writer:   iGen,
 			Dir:      packageName,
 			FileName: packageFileName,
+			Writer:   fmtwriter.New(iGen, true, true),
 		},
 	}, nil
 }
