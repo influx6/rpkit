@@ -1,6 +1,6 @@
 package userservicerp
 
-// All code below are auto-generated and should not be edited by handle.
+// All code below are auto-generated and should not be edited by hand.
 // See https://github.com/gokit/rpkit for more info.
 
 import (
