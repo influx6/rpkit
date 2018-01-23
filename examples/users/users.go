@@ -17,6 +17,7 @@ type User struct {
 
 // @rp
 type UserService interface {
+	Raise(context.Context) (string, error)
 	MakeAdmin(context.Context)
 	EnableSMS(context.Context) error
 	Delete(context.Context, string) error

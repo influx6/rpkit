@@ -15,8 +15,8 @@ import (
 func main() {
 	flags.Run("rpkit", flags.Command{
 		Name:      "generate",
-		ShortDesc: "Generates a rpc like API for functions and interface types.",
-		Desc:      "Generates a rpc API from provided interfaces or functions to create services with.",
+		ShortDesc: "Generates a rpc like API for interface types.",
+		Desc:      "Generates a rpc API from provided interfaces to create services with.",
 		Action: func(ctx flags.Context) error {
 			force, _ := ctx.GetBool("force")
 			dest, _ := ctx.GetString("dest")

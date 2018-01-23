@@ -16,6 +16,29 @@ go get github.com/gokit/rpkit
 
 ## CLI
 
+```bash
+> rpkit generate
+```
+
+```bash
+> rpkit
+Usage: rpkit [flags] [command] 
+
+⡿ COMMANDS:
+	⠙ generate        Generates a rpc like API for interface types.
+
+⡿ HELP:
+	Run [command] help
+
+⡿ OTHERS:
+	Run 'rpkit flags' to print all flags of all commands.
+
+⡿ WARNING:
+	Uses internal flag package so flags must precede command name. 
+	e.g 'rpkit -cmd.flag=4 run'
+
+```
+
 
 ## How It works
 

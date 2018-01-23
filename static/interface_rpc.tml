@@ -4,11 +4,13 @@
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"net/http"
-	"io"
+	"bytes"
 	"errors"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"net/url"
 
 	{{quote .Pkg.Path}}
 )
@@ -19,18 +21,270 @@ const (
 
 	// MethodServiceName defines the complete name of this giving API service.
 	MethodServiceName = "{{.ServiceName}}.{{.Itr.Object.Name.Name}}"
+
+	// ServiceCodePath defines the path to this generated package which contains the implemented service methods.
+	ServiceCodePath = "{{.TargetPackage}}"
+
+	// ServiceCodePathName defines the name giving to
+	// this package.
+	ServiceCodePathName = "{{.ImplPackageName}}"
 )
 
 // errors ...
 var (
+	ErrNotInContext = errors.New("item not in context")
 	ErrInvalidRequestURI = errors.New("invalid request uri")
+	ErrBadRequest = errors.New("server rejected request as bad")
 	ErrInvalidRequestMethod = errors.New("invalid request method")
+	ErrServerInternalProblem = errors.New("server had internal problems")
+	ErrServerRejectedRequest = errors.New("server does not handle request type/method")
 )
+
+//****************************************************************************
+// Context Keys, Setters And Getters
+//****************************************************************************
+
+// sets of context keys used by the package.
+const (
+	contextCustomHeaderKey = "rp:custom:header"
+	contextRequestKey = "rp:request"
+	contextRequestMethodKey = "rp:request:method"
+	contextRequestHeaderKey = "rp:request:header"
+	contextResponseWriterKey = "rp:response:writer"
+	contextServiceNameKey = "rp:service:name"
+	contextServicePathKey = "rp:service:path"
+	contextServicePackageKey = "rp:service:package"
+	contextServicePackageNameKey = "rp:service:package:name"
+	contextServiceSourcePackageKey = "rp:service:source:path"
+	contextServiceSourcePackageNameKey = "rp:service:source:package"
+	contextServiceMethodNameKey = "rp:service:method:name"
+	contextServiceMethodPathKey = "rp:service:method:path"
+	contextServiceMethodRouteKey = "rp:service:method:route"
+	contextClientRequestURLKey = "rp:client:request:url"
+	contextRequestTransportKey = "rp:request:transport"
+)
+
+// CtxRequestTransport retrieves if any set RequestTransport string from context.
+func CtxRequestTransport(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextRequestTransportKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithRequestTransport sets the giving RequestTransport into context.
+func WithRequestTransport(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextRequestTransportKey, value)
+}
+
+// CtxServiceSourcePackageName retrieves if any set ServiceSourcePackageName string from context.
+func CtxServiceSourcePackageName(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServiceSourcePackageNameKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServiceSourcePackageName sets the giving ServiceSourcePackageName into context.
+func WithServiceSourcePackageName(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServiceSourcePackageNameKey, value)
+}
+
+// CtxServiceSourcePackage retrieves if any set ServiceSourcePackage string from context.
+func CtxServiceSourcePackage(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServiceSourcePackageKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServiceSourcePackage sets the giving ServiceSourcePackage into context.
+func WithServiceSourcePackage(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServiceSourcePackageKey, value)
+}
+
+// CtxServiceMethodRoute retrieves if any set ServiceMethodRoute string from context.
+func CtxServiceMethodRoute(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServiceMethodRouteKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServiceMethodRoute sets the giving ServiceMethodRoute into context.
+func WithServiceMethodRoute(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServiceMethodRouteKey, value)
+}
+
+// CtxServiceMethodPath retrieves if any set ServiceMethodPath string from context.
+func CtxServiceMethodPath(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServiceMethodPathKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServiceMethodPath sets the giving ServiceMethodPath into context.
+func WithServiceMethodPath(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServiceMethodPathKey, value)
+}
+
+// CtxServiceMethodName retrieves if any set ServiceMethodName string from context.
+func CtxServiceMethodName(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServiceMethodNameKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServiceMethodName sets the giving ServiceMethodName into context.
+func WithServiceMethodName(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServiceMethodNameKey, value)
+}
+
+// CtxServicePackageName retrieves if any set ServicePackageName string from context.
+func CtxServicePackageName(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServicePackageNameKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServicePackageName sets the giving ServicePackageName into context.
+func WithServicePackageName(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServicePackageNameKey, value)
+}
+
+// CtxServicePackage retrieves if any set ServicePackage string from context.
+func CtxServicePackage(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServicePackageKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServicePackage sets the giving ServicePackage into context.
+func WithServicePackage(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServicePackageKey, value)
+}
+
+// CtxServicePath retrieves if any set ServicePath string from context.
+func CtxServicePath(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServicePathKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServicePath sets the giving ServicePath into context.
+func WithServicePath(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServicePathKey, value)
+}
+
+// CtxServiceName retrieves if any set ServiceName string from context.
+func CtxServiceName(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextServiceNameKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithServiceName sets the giving ServiceName into context.
+func WithServiceName(ctx context.Context, value string) context.Context {
+	return context.WithValue(ctx, contextServiceNameKey, value)
+}
+
+// CtxCustomHeader retrieves if any set http.Header from context.
+func CtxCustomHeader(ctx context.Context) (http.Header, error) {
+	if item, ok := ctx.Value(contextCustomHeaderKey).(http.Header); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithCustomHeader sets the giving http.Header into context.
+func WithCustomHeader(ctx context.Context, header http.Header) context.Context {
+	return context.WithValue(ctx, contextCustomHeaderKey, header)
+}
+
+// CtxResponseWriter retrieves if any set http.ResponseWriter from context.
+func CtxResponseWriter(ctx context.Context) (http.ResponseWriter, error) {
+	if item, ok := ctx.Value(contextResponseWriterKey).(http.ResponseWriter); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithResponseWriter sets the giving http.ResponseWriter into context.
+func WithResponseWriter(ctx context.Context, w http.ResponseWriter) context.Context {
+	return context.WithValue(ctx, contextResponseWriterKey, w)
+}
+
+// CtxRequestMethod retrieves if any set http.Request.Method string from context.
+func CtxRequestMethod(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextRequestMethodKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithRequestMethod sets the giving http.RequestMethod into context.
+func WithRequestMethod(ctx context.Context, method string) context.Context {
+	return context.WithValue(ctx, contextRequestMethodKey, method)
+}
+
+// CtxRequestHeader retrieves if any set http.Request.Header http.Header from context.
+func CtxRequestHeader(ctx context.Context) (http.Header, error) {
+	if item, ok := ctx.Value(contextRequestHeaderKey).(http.Header); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithRequestHeader sets the giving http.Request.Header into context.
+func WithRequestHeader(ctx context.Context, header http.Header) context.Context {
+	return context.WithValue(ctx, contextRequestHeaderKey, header)
+}
+
+// CtxRequest retrieves if any set *http.Request from context.
+func CtxRequest(ctx context.Context) (*http.Request, error) {
+	if item, ok := ctx.Value(contextRequestKey).(*http.Request); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithRequest sets the giving http.Request into context.
+func WithRequest(ctx context.Context, r *http.Request) context.Context {
+	return context.WithValue(ctx, contextRequestKey, r)
+}
+
+// CtxClientRequestURI retrieves if any set URL path from context.
+func CtxClientRequestURI(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextClientRequestURLKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithClientRequestURI sets the giving http.Request into context.
+func WithClientRequestURI(ctx context.Context, path string) context.Context {
+	return context.WithValue(ctx, contextClientRequestURLKey, path)
+}
 
 //****************************************************************************
 // Types
 // Source: {{$Itr.Path}}
 //****************************************************************************
+
+// ActWithRequest defines a function type which is used by the client to provide
+// access to the request object before it's used to make request.
+type ActWithRequest func(*http.Request)
+
+// ResponseValidation defines a function type which is used to validate an incoming
+// request based on implemented logic. Use with clients to add custom validation
+// steps.
+type ResponseValidation func(*http.Response) error
 
 // Hook defines a interface for having access to different areas of
 // a call to the service of a method.
@@ -56,9 +310,13 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 `
 
@@ -66,7 +324,7 @@ const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract inte
 // provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type {{$method.Name}}MethodContract interface{
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 
 // {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
@@ -87,13 +345,164 @@ func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract) {{$method.Nam
 	}
 }
 
+// {{$method.Name}}ClientContract defines a contract interface for clients to make request to {{$method.Name}}Server.
+type {{$method.Name}}ClientContract interface {
+	{{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}
+}
+
+// New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
+// New{{$method.Name}}MethodContractClient.
+func New{{$method.Name}}MethodClient(addr string, client *http.Client) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, nil, nil)
+}
+
+// New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
+// perform action as specified by contract.
+func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return impl{{$method.Name}}Client{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type impl{{$method.Name}}Client struct {
+	rootURL *url.URL
+	client *http.Client
+	actor ActWithRequest
+	resval ResponseValidation
+}
+
+// {{$method.Name}} makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference({{toLower $method.Name}}ServiceRoutePathURL)
+	{{if equal ($method.ArgTypePos "context.Context") 0}}{{ $ctxVarArg := $method.GetArgsAt 0 }}{{$ctxVar := $ctxVarArg.Name}}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerRejectedRequest
+	}
+	{{else}}{{ $ctxVar := "ctx" }}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerRejectedRequest
+	}
+	{{end}}
+
+	return nil
+}
+
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
 // from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
 type {{$method.Name}}Server interface {
 	http.Handler
 }
 
-type impl{{$method.Name}}Handler struct{
+type impl{{$method.Name}}Handler struct {
 	hook Hook
 	headers http.Header
 	service {{$method.Name}}MethodService
@@ -112,6 +521,20 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, {{quote $Itr.Path}})
+	ctx = WithServiceSourcePackageName(ctx, {{quote $Itr.Package}})
+	ctx = WithServiceMethodName(ctx, {{quote $method.Name}})
+	ctx = WithServiceMethodPath(ctx, {{$method.Name}}ServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, {{$method.Name}}ServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -140,7 +563,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			}
 		}
 
-		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Agent", "RPKIT:HTTP")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
 		w.Header().Add("X-Method", {{quote $method.Name}})
@@ -195,7 +618,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		defer func(){
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -247,9 +670,13 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 `
 
@@ -257,7 +684,7 @@ const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract inte
 // provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type {{$method.Name}}MethodContract interface{
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 
 // {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
@@ -275,6 +702,157 @@ func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract) {{$method.Nam
 		return provider.{{$method.Name}}()
 		{{end}}
 	}
+}
+
+// {{$method.Name}}ClientContract defines a contract interface for clients to make request to {{$method.Name}}Server.
+type {{$method.Name}}ClientContract interface {
+	{{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}
+}
+
+// New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
+// New{{$method.Name}}MethodContractClient.
+func New{{$method.Name}}MethodClient(addr string, client *http.Client) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, nil, nil)
+}
+
+// New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
+// perform action as specified by contract.
+func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return impl{{$method.Name}}Client{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type impl{{$method.Name}}Client struct {
+	rootURL *url.URL
+	client *http.Client
+	actor ActWithRequest
+	resval ResponseValidation
+}
+
+// {{$method.Name}} makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference({{toLower $method.Name}}ServiceRoutePathURL)
+	{{if equal ($method.ArgTypePos "context.Context") 0}}{{ $ctxVarArg := $method.GetArgsAt 0 }}{{$ctxVar := $ctxVarArg.Name}}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerRejectedRequest
+	}
+	{{else}}{{ $ctxVar := "ctx" }}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerRejectedRequest
+	}
+	{{end}}
+
+	return nil
 }
 
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
@@ -302,6 +880,20 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, {{quote $Itr.Path}})
+	ctx = WithServiceSourcePackageName(ctx, {{quote $Itr.Package}})
+	ctx = WithServiceMethodName(ctx, {{quote $method.Name}})
+	ctx = WithServiceMethodPath(ctx, {{$method.Name}}ServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, {{$method.Name}}ServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -385,7 +977,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		defer func(){
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -438,9 +1030,13 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 `
 
@@ -448,7 +1044,7 @@ const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract inte
 // provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type {{$method.Name}}MethodContract interface{
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 
 // {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
@@ -479,6 +1075,175 @@ func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$me
 	}
 }
 
+// {{$method.Name}}ClientContract defines a contract interface for clients to make request to {{$method.Name}}Server.
+type {{$method.Name}}ClientContract interface {
+	{{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}
+}
+
+// {{$method.Name}}ClientDecoder defines a interface which expose a single method to decode the response
+// returned by {{$method.Name}}ClientContract.{{$method.Name}}.
+type {{$method.Name}}ClientDecoder interface{
+	Decode(io.Reader) ({{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}, error)
+}
+
+// New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
+// New{{$method.Name}}MethodContractClient.
+func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
+}
+
+// New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
+// perform action as specified by contract.
+func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return impl{{$method.Name}}Client{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		decoder: decoder,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type impl{{$method.Name}}Client struct {
+	rootURL *url.URL
+	client *http.Client
+	actor ActWithRequest
+	resval ResponseValidation
+	decoder {{$method.Name}}ClientDecoder
+}
+
+// {{$method.Name}} makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference({{toLower $method.Name}}ServiceRoutePathURL)
+	{{$retType := $method.GetReturnsAt 0}}{{if equal ($method.ArgTypePos "context.Context") 0}}{{ $ctxVarArg := $method.GetArgsAt 0 }}{{$ctxVar := $ctxVarArg.Name}}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}}, err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil{{else}}{{ $ctxVar := "ctx" }}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}}, err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil{{end}}
+}
+
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
 // from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
 type {{$method.Name}}Server interface {
@@ -504,6 +1269,20 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, {{quote $Itr.Path}})
+	ctx = WithServiceSourcePackageName(ctx, {{quote $Itr.Package}})
+	ctx = WithServiceMethodName(ctx, {{quote $method.Name}})
+	ctx = WithServiceMethodPath(ctx, {{$method.Name}}ServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, {{$method.Name}}ServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -587,7 +1366,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		defer func(){
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -626,7 +1405,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 {{end}}
 {{range $_, $method := .OutputWithNoErrorMethods}}
 //****************************************************************************
-// RP: Output Returning Only Error methods
+// RP: Output Returning No Error methods
 // Method: {{$method.Name}}
 // Source: {{$Itr.Path}}
 // Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
@@ -638,9 +1417,13 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 `
 
@@ -648,7 +1431,7 @@ const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract inte
 // provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type {{$method.Name}}MethodContract interface{
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 
 // {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
@@ -679,6 +1462,175 @@ func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$me
 	}
 }
 
+// {{$method.Name}}ClientContract defines a contract interface for clients to make request to {{$method.Name}}Server.
+type {{$method.Name}}ClientContract interface {
+	{{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}
+}
+
+// {{$method.Name}}ClientDecoder defines a interface which expose a single method to decode the response
+// returned by {{$method.Name}}ClientContract.{{$method.Name}}.
+type {{$method.Name}}ClientDecoder interface{
+	Decode(io.Reader) ({{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}, error)
+}
+
+// New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
+// New{{$method.Name}}MethodContractClient.
+func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
+}
+
+// New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
+// perform action as specified by contract.
+func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return impl{{$method.Name}}Client{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		decoder: decoder,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type impl{{$method.Name}}Client struct {
+	rootURL *url.URL
+	client *http.Client
+	actor ActWithRequest
+	resval ResponseValidation
+	decoder {{$method.Name}}ClientDecoder
+}
+
+// {{$method.Name}} makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference({{toLower $method.Name}}ServiceRoutePathURL)
+	{{$retType := $method.GetReturnsAt 0}}{{if equal ($method.ArgTypePos "context.Context") 0}}{{ $ctxVarArg := $method.GetArgsAt 0 }}{{$ctxVar := $ctxVarArg.Name}}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}}, err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil{{else}}{{ $ctxVar := "ctx" }}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}}, err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}}, jsonErr
+		}
+		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil{{end}}
+}
+
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
 // from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
 type {{$method.Name}}Server interface {
@@ -704,6 +1656,20 @@ func New{{$method.Name}}Server(service {{$method.Name}}MethodService, hook Hook,
 // ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method {{quote $method.Name}}.
 func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, {{quote $Itr.Path}})
+	ctx = WithServiceSourcePackageName(ctx, {{quote $Itr.Package}})
+	ctx = WithServiceMethodName(ctx, {{quote $method.Name}})
+	ctx = WithServiceMethodPath(ctx, {{$method.Name}}ServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, {{$method.Name}}ServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -789,7 +1755,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		defer func(){
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -839,9 +1805,13 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 `
 
@@ -849,13 +1819,13 @@ const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract inte
 // provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type {{$method.Name}}MethodContract interface{
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 
 // {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
 // expected by {{$method.Name}}MethodContract.{{$method.Name}}.
 type {{$method.Name}}Decoder interface{
-	Decode(io.Reader) ({{if eq ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+	Decode(io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
 }
 
 // {{$method.Name}}MethodService defines the returned signature by the Service{{$method.Name}}
@@ -879,6 +1849,170 @@ func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, decoder {{$me
 		return provider.{{$method.Name}}(input)
 		{{end}}
 	}
+}
+
+// {{$method.Name}}ClientEncoder defines a interface which expose a single method to encode the request
+// data sent by {{$method.Name}}ClientContract.{{$method.Name}}.
+type {{$method.Name}}ClientEncoder interface{
+	Encode(io.Writer, {{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}) error
+}
+
+// {{$method.Name}}ClientContract defines a contract interface for clients to make request to {{$method.Name}}Server.
+type {{$method.Name}}ClientContract interface {
+	{{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}
+}
+
+// New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
+// New{{$method.Name}}MethodContractClient.
+func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
+}
+
+// New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
+// perform action as specified by contract.
+func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return impl{{$method.Name}}Client{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		encoder: encoder,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type impl{{$method.Name}}Client struct {
+	rootURL *url.URL
+	client *http.Client
+	actor ActWithRequest
+	resval ResponseValidation
+	encoder {{$method.Name}}ClientEncoder
+}
+
+// {{$method.Name}} makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference({{toLower $method.Name}}ServiceRoutePathURL)
+	{{ $inVarArg := $method.GetArgsAt 1 }}{{if equal ($method.ArgTypePos "context.Context") 0}}{{ $ctxVarArg := $method.GetArgsAt 0 }}{{$ctxVar := $ctxVarArg.Name}}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	var body bytes.Buffer
+	if err := imp.encoder.Encode(&body, {{$inVarArg.Name}}); err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", targetURL.String(), &body)
+	if err != nil {
+		return err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerRejectedRequest
+	}
+	{{else}}{{ $ctxVar := "ctx" }}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerRejectedRequest
+	}
+	{{end}}
+
+	return nil
 }
 
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
@@ -908,6 +2042,20 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	defer r.Body.Close()
 
 	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, {{quote $Itr.Path}})
+	ctx = WithServiceSourcePackageName(ctx, {{quote $Itr.Package}})
+	ctx = WithServiceMethodName(ctx, {{quote $method.Name}})
+	ctx = WithServiceMethodPath(ctx, {{$method.Name}}ServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, {{$method.Name}}ServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -993,7 +2141,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		defer func(){
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1043,9 +2191,13 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 `
 
@@ -1053,13 +2205,13 @@ const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract inte
 // provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type {{$method.Name}}MethodContract interface{
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 
 // {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
 // expected by {{$method.Name}}MethodContract.{{$method.Name}}.
 type {{$method.Name}}Decoder interface{
-	Decode(io.Reader) ({{if eq ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+	Decode(io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
 }
 
 // {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
@@ -1093,6 +2245,189 @@ func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$me
 	}
 }
 
+// {{$method.Name}}ClientEncoder defines a interface which expose a single method to encode the request
+// data sent by {{$method.Name}}ClientContract.{{$method.Name}}.
+type {{$method.Name}}ClientEncoder interface{
+	Encode(io.Writer, {{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}) error
+}
+
+// {{$method.Name}}ClientDecoder defines a interface which expose a single method to decode the response
+// returned by {{$method.Name}}ClientContract.{{$method.Name}}.
+type {{$method.Name}}ClientDecoder interface{
+	Decode(io.Reader) ({{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}, error)
+}
+
+// {{$method.Name}}ClientContract defines a contract interface for clients to make request to {{$method.Name}}Server.
+type {{$method.Name}}ClientContract interface {
+	{{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}
+}
+
+// New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
+// New{{$method.Name}}MethodContractClient.
+func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, encoder, decoder, nil, nil)
+}
+
+// New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
+// perform action as specified by contract.
+func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return impl{{$method.Name}}Client{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		encoder: encoder,
+		decoder: decoder,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type impl{{$method.Name}}Client struct {
+	rootURL *url.URL
+	client *http.Client
+	actor ActWithRequest
+	resval ResponseValidation
+	encoder {{$method.Name}}ClientEncoder
+	decoder {{$method.Name}}ClientDecoder
+}
+
+// {{$method.Name}} makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference({{toLower $method.Name}}ServiceRoutePathURL)
+	{{$retType := $method.GetReturnsAt 0}}{{ $inVarArg := $method.GetArgsAt 1 }}{{if equal ($method.ArgTypePos "context.Context") 0}}{{ $ctxVarArg := $method.GetArgsAt 0 }}{{$ctxVar := $ctxVarArg.Name}}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	var body bytes.Buffer
+	if err := imp.encoder.Encode(&body, {{$inVarArg.Name}}); err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	req, err := http.NewRequest("POST", targetURL.String(), &body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}},err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}},err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil
+	{{else}}{{ $ctxVar := "ctx" }}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}},err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}}, err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil{{end}}
+}
+
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
 // from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
 type {{$method.Name}}Server interface {
@@ -1120,6 +2455,20 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	defer r.Body.Close()
 
 	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, {{quote $Itr.Path}})
+	ctx = WithServiceSourcePackageName(ctx, {{quote $Itr.Package}})
+	ctx = WithServiceMethodName(ctx, {{quote $method.Name}})
+	ctx = WithServiceMethodPath(ctx, {{$method.Name}}ServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, {{$method.Name}}ServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -1205,7 +2554,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		defer func(){
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1255,9 +2604,13 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 `
 
@@ -1265,13 +2618,13 @@ const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract inte
 // provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type {{$method.Name}}MethodContract interface{
-	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if eq $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
 }
 
 // {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
 // expected by {{$method.Name}}MethodContract.{{$method.Name}}.
 type {{$method.Name}}Decoder interface{
-	Decode(io.Reader) ({{if eq ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+	Decode(io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
 }
 
 // {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
@@ -1308,6 +2661,189 @@ func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$me
 	}
 }
 
+// {{$method.Name}}ClientEncoder defines a interface which expose a single method to encode the request
+// data sent by {{$method.Name}}ClientContract.{{$method.Name}}.
+type {{$method.Name}}ClientEncoder interface{
+	Encode(io.Writer, {{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}) error
+}
+
+// {{$method.Name}}ClientDecoder defines a interface which expose a single method to decode the response
+// returned by {{$method.Name}}ClientContract.{{$method.Name}}.
+type {{$method.Name}}ClientDecoder interface{
+	Decode(io.Reader) ({{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}, error)
+}
+
+// {{$method.Name}}ClientContract defines a contract interface for clients to make request to {{$method.Name}}Server.
+type {{$method.Name}}ClientContract interface {
+	{{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}
+}
+
+// New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
+// New{{$method.Name}}MethodContractClient.
+func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, encoder, decoder, nil, nil)
+}
+
+// New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
+// perform action as specified by contract.
+func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return impl{{$method.Name}}Client{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		encoder: encoder,
+		decoder: decoder,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type impl{{$method.Name}}Client struct {
+	rootURL *url.URL
+	client *http.Client
+	actor ActWithRequest
+	resval ResponseValidation
+	encoder {{$method.Name}}ClientEncoder
+	decoder {{$method.Name}}ClientDecoder
+}
+
+// {{$method.Name}} makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTypePos "context.Context") 0}}{{$method.ArgumentList true}}{{else}}ctx context.Context, {{$method.ArgumentList true}}{{end}}) {{ if $method.HasReturns }}{{$tor := $method.TotalReturns}}{{ if $method.HasReturnType "error"}}({{$method.ReturnList true}}){{else}}({{$method.ReturnList true}}, error){{end}}{{else}}error{{end}}{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference({{toLower $method.Name}}ServiceRoutePathURL)
+	{{$retType := $method.GetReturnsAt 0}}{{ $inVarArg := $method.GetArgsAt 1 }}{{if equal ($method.ArgTypePos "context.Context") 0}}{{ $ctxVarArg := $method.GetArgsAt 0 }}{{$ctxVar := $ctxVarArg.Name}}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	var body bytes.Buffer
+	if err := imp.encoder.Encode(&body, {{$inVarArg.Name}}); err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	req, err := http.NewRequest("POST", targetURL.String(), &body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}},err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}},err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil
+	{{else}}{{ $ctxVar := "ctx" }}
+	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
+	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
+	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}},err
+	}
+
+	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return {{defaultGoType $retType.ExType}}, err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return {{defaultGoType $retType.ExType}},jsonErr
+		}
+		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+	}
+
+	rec, err := imp.decoder.Decode(res.Body)
+	if err != nil {
+		return {{defaultGoType $retType.ExType}}, err
+	}
+
+	return rec, nil{{end}}
+}
+
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
 // from {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.
 type {{$method.Name}}Server interface {
@@ -1335,6 +2871,20 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	defer r.Body.Close()
 
 	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, {{quote $Itr.Path}})
+	ctx = WithServiceSourcePackageName(ctx, {{quote $Itr.Package}})
+	ctx = WithServiceMethodName(ctx, {{quote $method.Name}})
+	ctx = WithServiceMethodPath(ctx, {{$method.Name}}ServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, {{$method.Name}}ServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -1420,7 +2970,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		defer func(){
 			if rerr := recover(); rerr != nil {
 				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusBadRequest, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1462,15 +3012,74 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 // Source: {{$Itr.Path}}
 //****************************************************************************
 
-// willRedirect returns true/false if giving code is a redirect status.
-func willRedirect(code int) bool {
-	return code >= 301 && code <= 308
+func requestRedirected(res *http.Response) bool {
+	if res.StatusCode >= 300 && res.StatusCode <= 308  {
+		 return true
+	}
+	return false
 }
 
-// isRedirect returns true/false if giving code is a redirect status.
-func isRedirect(code int) bool {
-	return code == http.StatusTemporaryRedirect || code == http.StatusPermanentRedirect
+func requestFailed(res *http.Response) bool {
+	if res.StatusCode >= 400 && res.StatusCode < 500 {
+		 return true
+	}
+	return false
 }
+
+func requestFacedInternalIssues(res *http.Response) bool {
+	if res.StatusCode >= 500 && res.StatusCode < 600 {
+		 return true
+	}
+	return false
+}
+
+func requestSucceeded(res *http.Response) bool {
+	if res.StatusCode >= 200 && res.StatusCode <= 299 {
+		 return true
+	}
+	return false
+}
+
+// mustParseURL attempts to parse provided access using parseURL, it panics
+// if an error occured.
+func mustParseURL(addr string) *url.URL {
+	parsed, err := parseURL(addr)
+	if err == nil { return parsed }
+	panic(`failed to parse url: `+addr+` , error occurred: `+err.Error())
+}
+
+// parseURL parses giving address returning *url.URL instance for address if
+// it's a valid address, ensuring the scheme is provided or setting 'http'
+// if not set. Returns an error if address is an invalid URL.
+func parseURL(addr string) (*url.URL, error) {
+	parsed, err := url.Parse(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if parsed.Scheme == "" {
+		parsed.Scheme = "http"
+	}
+
+	return parsed, nil
+}
+
+// joinURL will attempt to join the provided address (addr) to the root URL
+// provided if the address is not an absolute URL address path. An error will
+// be returned if addr is not a valid URL path.
+func joinURL(root *url.URL, addr string) (*url.URL, error) {
+	parsed, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if parsed.IsAbs(){
+		parsed = root.ResolveReference(parsed)
+	}
+
+	return parsed, nil
+}
+
 
 // skipRedirects copies giving http.Client and fix issue with possible redirects
 // in go1.8 when a post receives a status code which is undesired. Such has 302, 303,
@@ -1485,6 +3094,14 @@ func skipRedirects(in *http.Client) *http.Client {
 		return http.ErrUseLastResponse
 	}
 	return &copy
+}
+
+func loadJSONError(r io.Reader) (jsonErrorResponse, error) {
+	var res jsonErrorResponse
+	if err := json.NewDecoder(r).Decode(&res); err != nil {
+		return res, err
+	}
+	return res, nil
 }
 
 func jsonWriteError(w http.ResponseWriter, code int, message string, err error, meta map[string]interface{}){
@@ -1512,3 +3129,8 @@ type jsonErrorResponse struct{
 	Message string `json:"message"`
 	Meta map[string]interface{} `json:"meta"`
 }
+
+func (jse jsonErrorResponse) Error() string {
+	return jse.Message + " " + jse.Err.Error()
+}
+

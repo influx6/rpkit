@@ -69,7 +69,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 			continue
 		}
 
-		if method.TotalArgs() == 1 && method.HasArgType("contenxt.Context") &&
+		if method.TotalArgs() == 1 && method.HasArgType("context.Context") &&
 			method.HasReturnType("error") &&
 			method.TotalReturns() == 2 && method.ReturnTypePos("error") == 1 {
 			outputWithErrorMethods = append(outputWithErrorMethods, method)
@@ -140,12 +140,14 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 		gen.Name(packageName),
 		gen.Imports(),
 		gen.Block(
-			gen.SourceText(
+			gen.SourceTextWith(
 				"rpkit:interface_rpc",
 				string(static.MustReadFile("interface_rpc.tml", true)),
+				ast.ASTTemplatFuncs,
 				struct {
 					ServiceName                    string
 					TargetPackage                  string
+					ImplPackageName                string
 					An                             ast.AnnotationDeclaration
 					Itr                            ast.InterfaceDeclaration
 					Pkg                            ast.PackageDeclaration
@@ -160,6 +162,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					An:                             an,
 					Itr:                            in,
 					Pkg:                            declr,
+					ImplPackageName:                packageName,
 					TargetPackage:                  packagePath,
 					OnlyErrorMethods:               onlyErrorMethods,
 					NoArgAndReturns:                noArgNoReturnMethods,
