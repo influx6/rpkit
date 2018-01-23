@@ -288,6 +288,8 @@ type ResponseValidation func(*http.Response) error
 
 // Hook defines a interface for having access to different areas of
 // a call to the service of a method.
+//
+//@implement
 type Hook interface {
 	ResponseSent(context.Context)
 	ResponsePrepared(context.Context)
