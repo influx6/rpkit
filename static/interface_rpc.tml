@@ -13,6 +13,9 @@ import (
 	"net/url"
 
 	{{quote .Pkg.Path}}
+	{{range $path, $name := .Imports}}
+	{{$name}} {{quote $path}}
+	{{end}}
 )
 
 const (
@@ -1453,13 +1456,10 @@ type {{$method.Name}}MethodService func(context.Context, io.Writer) error
 func Serve{{.Name}}Method(provider {{$method.Name}}MethodContract, encoder {{$method.Name}}Encoder) {{$method.Name}}MethodService {
 	return func(ctx context.Context, w io.Writer) error {
 		{{if $method.HasArgType "context.Context"}}
-		res, err := provider.{{$method.Name}}(ctx)
+		res := provider.{{$method.Name}}(ctx)
 		{{else}}
-		res, err := provider.{{$method.Name}}()
+		res := provider.{{$method.Name}}()
 		{{end}}
-		if err != nil {
-			return err
-		}
 		return encoder.Encode(w, res)
 	}
 }

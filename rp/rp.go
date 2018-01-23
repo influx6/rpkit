@@ -32,6 +32,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 		inputWithOutputWithErrorMethods []ast.FunctionDefinition
 
 	methods := in.Methods(&declr)
+	imports := in.GetImports(&declr, false)
 	for _, method := range methods {
 		if !method.HasReturns() && !method.HasArgs() {
 			noArgNoReturnMethods = append(noArgNoReturnMethods, method)
@@ -150,6 +151,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					ServiceName                    string
 					TargetPackage                  string
 					ImplPackageName                string
+					Imports                        map[string]string
 					An                             ast.AnnotationDeclaration
 					Itr                            ast.InterfaceDeclaration
 					Pkg                            ast.PackageDeclaration
@@ -164,6 +166,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					An:                             an,
 					Itr:                            in,
 					Pkg:                            declr,
+					Imports:                        imports,
 					ImplPackageName:                packageName,
 					TargetPackage:                  packagePath,
 					OnlyErrorMethods:               onlyErrorMethods,
@@ -191,6 +194,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					ServiceName                    string
 					TargetPackage                  string
 					ImplPackageName                string
+					Imports                        map[string]string
 					An                             ast.AnnotationDeclaration
 					Itr                            ast.InterfaceDeclaration
 					Pkg                            ast.PackageDeclaration
@@ -205,6 +209,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					An:                             an,
 					Itr:                            in,
 					Pkg:                            declr,
+					Imports:                        imports,
 					ImplPackageName:                packageName,
 					TargetPackage:                  packagePath,
 					OnlyErrorMethods:               onlyErrorMethods,
