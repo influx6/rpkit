@@ -322,7 +322,7 @@ const CreateServiceRoutePath = "/gokit.rpkit.examples.users.UserService/Create"
 
 // createServiceRoutePathURL defines a parsed path for the Create, it
 // ensures the created path is valid as a url.
-var createServiceRoutePathURL = mustParseURL(CreateServiceRoutePath)
+var createServiceRoutePathURL = mustSimpleParseURL(CreateServiceRoutePath)
 
 // CreateContractSource contains the source version of expected method contract.
 const CreateContractSource = `type CreateMethodContract interface {
@@ -435,14 +435,15 @@ func (imp implCreateClient) Create(var1 context.Context, var2 users.NewUser) (us
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
 
+	var result users.User
 	var body bytes.Buffer
 	if err := imp.encoder.Encode(&body, var2); err != nil {
-		return users.User{}, err
+		return result, err
 	}
 
 	req, err := http.NewRequest("POST", targetURL.String(), &body)
 	if err != nil {
-		return users.User{}, err
+		return result, err
 	}
 
 	if header, err := CtxCustomHeader(var1); err == nil {
@@ -457,44 +458,44 @@ func (imp implCreateClient) Create(var1 context.Context, var2 users.NewUser) (us
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return users.User{}, err
+		return result, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return users.User{}, err
+			return result, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{}, jsonErr
+			return result, jsonErr
 		}
-		return users.User{}, ErrServerInternalProblem
+		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{}, jsonErr
+			return result, jsonErr
 		}
-		return users.User{}, ErrBadRequest
+		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return users.User{}, jsonErr
+			return result, jsonErr
 		}
-		return users.User{}, ErrServerRejectedRequest
+		return result, ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return users.User{}, err
+		return result, err
 	}
 
-	return rec, nil
+	return result, nil
 
 }
 
@@ -693,14 +694,25 @@ func requestSucceeded(res *http.Response) bool {
 	return false
 }
 
-// mustParseURL attempts to parse provided access using parseURL, it panics
+// mustSimpleParseURL attempts to parse provided access using simpleParseURL, it panics
 // if an error occured.
-func mustParseURL(addr string) *url.URL {
-	parsed, err := parseURL(addr)
+func mustSimpleParseURL(addr string) *url.URL {
+	parsed, err := simpleParseURL(addr)
 	if err == nil {
 		return parsed
 	}
 	panic(`failed to parse url: ` + addr + ` , error occurred: ` + err.Error())
+}
+
+// simpleParseURL parses giving address returning *url.URL instance for address if
+// it's a valid address. Returns an error if address is an invalid URL.
+func simpleParseURL(addr string) (*url.URL, error) {
+	parsed, err := url.Parse(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return parsed, nil
 }
 
 // parseURL parses giving address returning *url.URL instance for address if

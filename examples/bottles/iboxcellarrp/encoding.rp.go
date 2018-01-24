@@ -1,4 +1,4 @@
-package bottlecellarrp
+package iboxcellarrp
 
 // All code below are auto-generated and should not be edited by hand.
 // See https://github.com/gokit/rpkit for more info.
@@ -8,7 +8,7 @@ import (
 	"errors"
 	"io"
 
-	cellar "github.com/gokit/rpkit/examples/bottles/cellar"
+	"github.com/gokit/rpkit/examples/bottles"
 )
 
 // errors ...
@@ -40,39 +40,47 @@ type TargetDecoder interface {
 }
 
 //****************************************************************************
-// *cellar.Cellar Encoders / Decoders Implementations
+// bottles.IBox Encoders / Decoders Implementations
 // Source: github.com/gokit/rpkit/examples/bottles
-// Used By: bottles.BottleCellar
+// Used By: bottles.IBoxCellar
 //****************************************************************************
 
-// CellarTypeEncoder implements a encoder for the *cellar.Cellar type.
-type CellarTypeEncoder struct {
+// IBoxTypeEncoder implements a encoder for the bottles.IBox type.
+type IBoxTypeEncoder struct {
 	Encoder Encoder
 }
 
-// Encode implements the encode function for type *cellar.Cellar used in gokit.rpkit.examples.bottles by
+// Encode implements the encode function for type bottles.IBox used in gokit.rpkit.examples.bottles by
 // calling the underline Encoder to handle the work.
-func (en CellarTypeEncoder) Encode(w io.Writer, payload *cellar.Cellar) error {
+func (en IBoxTypeEncoder) Encode(w io.Writer, payload bottles.IBox) error {
 	return en.Encoder.Encode(w, payload)
 }
 
-// CellarTypeDecoder implements a decoder for the *cellar.Cellar type.
-type CellarTypeDecoder struct {
-	Decoder TargetDecoder
+// IBoxTypeDecoder implements a decoder for the bottles.IBox type.
+type IBoxTypeDecoder struct {
+	Decoder Decoder
 }
 
-// Decode implements the decode function for type *cellar.Cellar used in gokit.rpkit.examples.bottles by
+// Decode implements the decode function for type bottles.IBox used in gokit.rpkit.examples.bottles by
 // calling the underline Decoder to handle the work.
-func (td CellarTypeDecoder) Decode(r io.Reader) (*cellar.Cellar, error) {
-	var res cellar.Cellar
-	err := td.Decoder.Decode(r, &res)
-	return &res, err
+func (td IBoxTypeDecoder) Decode(r io.Reader) (bottles.IBox, error) {
+	recs, err := td.Decoder.Decode(r)
+	if err != nil {
+		return recs.(bottles.IBox), err
+	}
+
+	// Type convert, so we have the right type, which is bottles.IBox.
+	if erecs, ok := recs.(bottles.IBox); ok {
+		return erecs, nil
+	}
+
+	return recs.(bottles.IBox), ErrDecodedUnknownType
 }
 
 //****************************************************************************
 // string Encoders / Decoders Implementations
 // Source: github.com/gokit/rpkit/examples/bottles
-// Used By: bottles.BottleCellar
+// Used By: bottles.IBoxCellar
 //****************************************************************************
 
 // StringTypeEncoder implements a encoder for the string type.

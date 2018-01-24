@@ -2,6 +2,7 @@ package rp
 
 import (
 	"fmt"
+	"html/template"
 	"path/filepath"
 	"strings"
 
@@ -51,6 +52,8 @@ methodLoop:
 		}
 	}
 
+	encodingTypes := map[string]ast.ArgType{}
+
 	imports := in.GetImports(&declr, false)
 	for _, method := range methods {
 		if !method.HasReturns() && !method.HasArgs() {
@@ -75,18 +78,33 @@ methodLoop:
 		}
 
 		if !method.HasArgs() && !method.HasReturnType("error") && method.TotalReturns() == 1 {
+			arg := method.Returns[0]
+			if skipArg(arg) {
+				continue
+			}
+			encodingTypes[arg.ExType] = arg
 			outputWithNoErrorMethods = append(outputWithNoErrorMethods, method)
 			continue
 		}
 
 		if method.TotalArgs() == 1 && method.HasArgType("context.Context") &&
 			!method.HasReturnType("error") && method.TotalReturns() == 1 {
+			arg := method.Returns[0]
+			if skipArg(arg) {
+				continue
+			}
+			encodingTypes[arg.ExType] = arg
 			outputWithNoErrorMethods = append(outputWithNoErrorMethods, method)
 			continue
 		}
 
 		if !method.HasArgs() && method.HasReturnType("error") &&
 			method.TotalReturns() == 2 && method.ReturnTypePos("error") == 1 {
+			arg := method.Returns[0]
+			if skipArg(arg) {
+				continue
+			}
+			encodingTypes[arg.ExType] = arg
 			outputWithErrorMethods = append(outputWithErrorMethods, method)
 			continue
 		}
@@ -94,24 +112,50 @@ methodLoop:
 		if method.TotalArgs() == 1 && method.HasArgType("context.Context") &&
 			method.HasReturnType("error") &&
 			method.TotalReturns() == 2 && method.ReturnTypePos("error") == 1 {
+			arg := method.Returns[0]
+			if skipArg(arg) {
+				continue
+			}
+			encodingTypes[arg.ExType] = arg
 			outputWithErrorMethods = append(outputWithErrorMethods, method)
 			continue
 		}
 
 		if method.TotalArgs() == 1 && method.TotalReturns() == 1 &&
 			!method.HasArgType("context.Context") && method.HasReturnType("error") {
+			arg := method.Args[0]
+			if skipArg(arg) {
+				continue
+			}
+			encodingTypes[arg.ExType] = arg
 			inputWithOnlyErrorMethods = append(inputWithOnlyErrorMethods, method)
 			continue
 		}
 
 		if method.TotalArgs() == 2 && method.TotalReturns() == 1 &&
 			method.ArgTypePos("context.Context") == 0 && method.HasReturnType("error") {
+			arg := method.Args[1]
+			if skipArg(arg) {
+				continue
+			}
+			encodingTypes[arg.ExType] = arg
 			inputWithOnlyErrorMethods = append(inputWithOnlyErrorMethods, method)
 			continue
 		}
 
 		if method.TotalArgs() == 1 && method.TotalReturns() == 1 &&
 			!method.HasArgType("context.Context") && !method.HasReturnType("error") {
+			arg := method.Args[0]
+			if skipArg(arg) {
+				continue
+			}
+
+			encodingTypes[arg.ExType] = arg
+			arg2 := method.Returns[0]
+			if skipArg(arg2) {
+				continue
+			}
+			encodingTypes[arg2.ExType] = arg2
 			inputWithOutputOnlyMethods = append(inputWithOutputOnlyMethods, method)
 			continue
 		}
@@ -124,6 +168,17 @@ methodLoop:
 				continue
 			}
 
+			arg := method.Args[1]
+			if skipArg(arg) {
+				continue
+			}
+			encodingTypes[arg.ExType] = arg
+
+			arg2 := method.Returns[0]
+			if skipArg(arg2) {
+				continue
+			}
+			encodingTypes[arg2.ExType] = arg2
 			inputWithOutputOnlyMethods = append(inputWithOutputOnlyMethods, method)
 			continue
 		}
@@ -136,6 +191,18 @@ methodLoop:
 				continue
 			}
 
+			arg := method.Args[0]
+			if skipArg(arg) {
+				continue
+			}
+
+			encodingTypes[arg.ExType] = arg
+			arg2 := method.Returns[0]
+			if skipArg(arg2) {
+				continue
+			}
+
+			encodingTypes[arg2.ExType] = arg2
 			inputWithOutputWithErrorMethods = append(inputWithOutputWithErrorMethods, method)
 			continue
 		}
@@ -153,6 +220,18 @@ methodLoop:
 				continue
 			}
 
+			arg := method.Args[1]
+			if skipArg(arg) {
+				continue
+			}
+
+			encodingTypes[arg.ExType] = arg
+			arg2 := method.Returns[0]
+			if skipArg(arg2) {
+				continue
+			}
+
+			encodingTypes[arg2.ExType] = arg2
 			inputWithOutputWithErrorMethods = append(inputWithOutputWithErrorMethods, method)
 			continue
 		}
@@ -165,13 +244,35 @@ methodLoop:
 			gen.SourceTextWith(
 				"rpkit:encoding_rpc",
 				string(static.MustReadFile("encoding_rpc.tml", true)),
-				ast.ASTTemplatFuncs,
+				gen.ToTemplateFuncs(
+					ast.ASTTemplatFuncs,
+					template.FuncMap{
+						"getTypeName": func(val string) string {
+							if parts := strings.Split(val, "."); len(parts) > 1 {
+								val = parts[1]
+							}
+
+							if len(val) == 1 {
+								if val == strings.ToLower(val) {
+									return strings.ToUpper(val)
+								}
+								return val
+							}
+
+							if val[:1] == strings.ToLower(val[:1]) {
+								return strings.ToUpper(val[:1]) + val[1:]
+							}
+							return val
+						},
+					},
+				),
 				struct {
 					ServiceName                    string
 					TargetPackage                  string
 					ImplPackageName                string
 					UsesInternal                   bool
 					Imports                        map[string]string
+					EncodingArgs                   map[string]ast.ArgType
 					An                             ast.AnnotationDeclaration
 					Itr                            ast.InterfaceDeclaration
 					Pkg                            ast.PackageDeclaration
@@ -187,6 +288,7 @@ methodLoop:
 					Itr:                            in,
 					Pkg:                            declr,
 					Imports:                        imports,
+					EncodingArgs:                   encodingTypes,
 					ImplPackageName:                packageName,
 					TargetPackage:                  packagePath,
 					OnlyErrorMethods:               onlyErrorMethods,
@@ -210,12 +312,34 @@ methodLoop:
 			gen.SourceTextWith(
 				"rpkit:interface_rpc",
 				string(static.MustReadFile("interface_rpc.tml", true)),
-				ast.ASTTemplatFuncs,
+				gen.ToTemplateFuncs(
+					ast.ASTTemplatFuncs,
+					template.FuncMap{
+						"getTypeName": func(val string) string {
+							if parts := strings.Split(val, "."); len(parts) > 1 {
+								val = parts[1]
+							}
+
+							if len(val) == 1 {
+								if val == strings.ToLower(val) {
+									return strings.ToUpper(val)
+								}
+								return val
+							}
+
+							if val[:1] == strings.ToLower(val[:1]) {
+								return strings.ToUpper(val[:1]) + val[1:]
+							}
+							return val
+						},
+					},
+				),
 				struct {
 					ServiceName                    string
 					TargetPackage                  string
 					ImplPackageName                string
 					UsesInternal                   bool
+					EncodingArgs                   map[string]ast.ArgType
 					Imports                        map[string]string
 					An                             ast.AnnotationDeclaration
 					Itr                            ast.InterfaceDeclaration
@@ -232,6 +356,7 @@ methodLoop:
 					Itr:                            in,
 					Pkg:                            declr,
 					Imports:                        imports,
+					EncodingArgs:                   encodingTypes,
 					ImplPackageName:                packageName,
 					TargetPackage:                  packagePath,
 					OnlyErrorMethods:               onlyErrorMethods,
@@ -260,4 +385,12 @@ methodLoop:
 			Writer:   fmtwriter.New(encodingGen, true, true),
 		},
 	}, nil
+}
+
+func skipArg(arg ast.ArgType) bool {
+	if arg.ChanType != nil {
+		return true
+	}
+
+	return false
 }

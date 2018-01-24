@@ -1,9 +1,10 @@
-package bottlecellarrp
+package iboxcellarrp
 
 // All code below are auto-generated and should not be edited by hand.
 // See https://github.com/gokit/rpkit for more info.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,7 +14,7 @@ import (
 	"net/http"
 	"net/url"
 
-	cellar "github.com/gokit/rpkit/examples/bottles/cellar"
+	"github.com/gokit/rpkit/examples/bottles"
 )
 
 const (
@@ -21,14 +22,14 @@ const (
 	BaseServiceName = "gokit.rpkit.examples.bottles"
 
 	// MethodServiceName defines the complete name of this giving API service.
-	MethodServiceName = "gokit.rpkit.examples.bottles.BottleCellar"
+	MethodServiceName = "gokit.rpkit.examples.bottles.IBoxCellar"
 
 	// ServiceCodePath defines the path to this generated package which contains the implemented service methods.
-	ServiceCodePath = "github.com/gokit/rpkit/examples/bottles/bottlecellarrp"
+	ServiceCodePath = "github.com/gokit/rpkit/examples/bottles/iboxcellarrp"
 
 	// ServiceCodePathName defines the name giving to
 	// this package.
-	ServiceCodePathName = "bottlecellarrp"
+	ServiceCodePathName = "iboxcellarrp"
 )
 
 // errors ...
@@ -307,118 +308,473 @@ type HTTPClient interface {
 }
 
 //****************************************************************************
-// RP: Output Returning No Error methods
-// Method: Cellar
+// RP: Input Returning Only Error methods
+// Method: StoreBottle
 // Source: github.com/gokit/rpkit/examples/bottles
-// Handler: bottles.BottleCellar.Cellar
+// Handler: bottles.IBoxCellar.StoreBottle
 //****************************************************************************
 
-// CellarServiceRoute defines the route for the Cellar method.
-const CellarServiceRoute = "gokit.rpkit.examples.bottles.BottleCellar/Cellar"
+// StoreBottleServiceRoute defines the route for the StoreBottle method.
+const StoreBottleServiceRoute = "gokit.rpkit.examples.bottles.IBoxCellar/StoreBottle"
 
-// CellarServiceRoutePath defines the full method path for the Cellar method.
-const CellarServiceRoutePath = "/gokit.rpkit.examples.bottles.BottleCellar/Cellar"
+// StoreBottleServiceRoutePath defines the full method path for the StoreBottle method.
+const StoreBottleServiceRoutePath = "/gokit.rpkit.examples.bottles.IBoxCellar/StoreBottle"
 
-// cellarServiceRoutePathURL defines a parsed path for the Cellar, it
+// storebottleServiceRoutePathURL defines a parsed path for the StoreBottle, it
 // ensures the created path is valid as a url.
-var cellarServiceRoutePathURL = mustSimpleParseURL(CellarServiceRoutePath)
+var storebottleServiceRoutePathURL = mustSimpleParseURL(StoreBottleServiceRoutePath)
 
-// CellarContractSource contains the source version of expected method contract.
-const CellarContractSource = `type CellarMethodContract interface {
-	Cellar()  *cellar.Cellar  
+// StoreBottleContractSource contains the source version of expected method contract.
+const StoreBottleContractSource = `type StoreBottleMethodContract interface {
+	StoreBottle(var1 context.Context,var2 bottles.IBox)  error  
 }
 `
 
-// CellarMethodContract defines a contract interface for method "Cellar"
-// provided by "bottles.BottleCellar" in "github.com/gokit/rpkit/examples/bottles". It allows us
+// StoreBottleMethodContract defines a contract interface for method "StoreBottle"
+// provided by "bottles.IBoxCellar" in "github.com/gokit/rpkit/examples/bottles". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
-type CellarMethodContract interface {
-	Cellar() *cellar.Cellar
+type StoreBottleMethodContract interface {
+	StoreBottle(var1 context.Context, var2 bottles.IBox) error
 }
 
-// CellarEncoder defines a interface which expose a single method to encode the response
-// returned by CellarMethodContract.Cellar.
-type CellarEncoder interface {
-	Encode(io.Writer, *cellar.Cellar) error
+// StoreBottleDecoder defines a interface which expose a single method to decode the request data
+// expected by StoreBottleMethodContract.StoreBottle.
+type StoreBottleDecoder interface {
+	Decode(io.Reader) (bottles.IBox, error)
 }
 
-// CellarMethodService defines the returned signature by the ServiceCellar
-// which executes it's internal behaviour based off on it's CellarMethodContract.
-type CellarMethodService func(context.Context, io.Writer) error
+// StoreBottleMethodService defines the returned signature by the ServiceStoreBottle
+// which executes it's internal behaviour based off on it's StoreBottleMethodContract.
+type StoreBottleMethodService func(context.Context, io.Reader) error
 
-// ServeCellarMethod implements the core contract behaviour to service "Cellar"
-// from "bottles.BottleCellar" in "github.com/gokit/rpkit/examples/bottles".
+// ServeStoreBottleMethod implements the core contract behaviour to service "StoreBottle"
+// from "bottles.IBoxCellar" in "github.com/gokit/rpkit/examples/bottles".
 // It returns a function that can be used within any transport layer to process, to said execute
 // behaviour of method as a service.
-func ServeCellarMethod(provider CellarMethodContract, encoder CellarEncoder) CellarMethodService {
-	return func(ctx context.Context, w io.Writer) error {
+func ServeStoreBottleMethod(provider StoreBottleMethodContract, decoder StoreBottleDecoder) StoreBottleMethodService {
+	return func(ctx context.Context, r io.Reader) error {
+		input, err := decoder.Decode(r)
+		if err != nil {
+			return err
+		}
 
-		res := provider.Cellar()
+		return provider.StoreBottle(ctx, input)
 
-		return encoder.Encode(w, res)
 	}
 }
 
-// CellarClientContract defines a contract interface for clients to make request to CellarServer.
-type CellarClientContract interface {
-	Cellar(ctx context.Context) (*cellar.Cellar, error)
+// StoreBottleClientEncoder defines a interface which expose a single method to encode the request
+// data sent by StoreBottleClientContract.StoreBottle.
+type StoreBottleClientEncoder interface {
+	Encode(io.Writer, bottles.IBox) error
 }
 
-// CellarClientDecoder defines a interface which expose a single method to decode the response
-// returned by CellarClientContract.Cellar.
-type CellarClientDecoder interface {
-	Decode(io.Reader) (*cellar.Cellar, error)
+// StoreBottleClientContract defines a contract interface for clients to make request to StoreBottleServer.
+type StoreBottleClientContract interface {
+	StoreBottle(var1 context.Context, var2 bottles.IBox) error
 }
 
-// NewCellarMethodClient returns a new CellarMethodContract it relies on
-// NewCellarMethodContractClient.
-func NewCellarMethodClient(addr string, client HTTPClient, encoder CellarClientDecoder) (CellarClientContract, error) {
-	return NewCellarMethodContractClient(addr, client, encoder, nil, nil)
+// NewStoreBottleMethodClient returns a new StoreBottleMethodContract it relies on
+// NewStoreBottleMethodContractClient.
+func NewStoreBottleMethodClient(addr string, client HTTPClient, encoder StoreBottleClientEncoder) (StoreBottleClientContract, error) {
+	return NewStoreBottleMethodContractClient(addr, client, encoder, nil, nil)
 }
 
-// NewCellarMethodContractClient returns a new CellarMethodContract implementation, which
-// will make it's call to provided address with the provided http.Client to a CellarServer to
+// NewStoreBottleMethodContractClient returns a new StoreBottleMethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a StoreBottleServer to
 // perform action as specified by contract.
-func NewCellarMethodContractClient(addr string, client HTTPClient, decoder CellarClientDecoder, act ActWithRequest, resv ResponseValidation) (CellarClientContract, error) {
+func NewStoreBottleMethodContractClient(addr string, client HTTPClient, encoder StoreBottleClientEncoder, act ActWithRequest, resv ResponseValidation) (StoreBottleClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	return implCellarClient{
+	return implStoreBottleClient{
 		actor:   act,
 		resval:  resv,
 		rootURL: root,
+		encoder: encoder,
+		client:  skipRedirects(client),
+	}, nil
+}
+
+type implStoreBottleClient struct {
+	rootURL *url.URL
+	client  HTTPClient
+	actor   ActWithRequest
+	resval  ResponseValidation
+	encoder StoreBottleClientEncoder
+}
+
+// StoreBottle makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp implStoreBottleClient) StoreBottle(var1 context.Context, var2 bottles.IBox) error {
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference(storebottleServiceRoutePathURL)
+
+	var1 = WithRequestMethod(var1, "POST")
+	var1 = WithClientRequestURI(var1, targetURL.String())
+	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
+
+	var body bytes.Buffer
+	if err := imp.encoder.Encode(&body, var2); err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", targetURL.String(), &body)
+	if err != nil {
+		return err
+	}
+
+	if header, err := CtxCustomHeader(var1); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		if jsonErr, err := loadJSONError(res.Body); err == nil {
+			return jsonErr
+		}
+		return ErrServerRejectedRequest
+	}
+
+	return nil
+}
+
+// StoreBottleServer implements a http.Handler for servicing the method StoreBottle
+// from bottles.IBoxCellar.
+type StoreBottleServer interface {
+	http.Handler
+}
+
+type implStoreBottleHandler struct {
+	hook    Hook
+	headers http.Header
+	service StoreBottleMethodService
+}
+
+// NewStoreBottleServer returns a new instance of the HTTPHandler which services all
+// http requests for giving method bottles.IBoxCellar.StoreBottle.
+func NewStoreBottleServer(service StoreBottleMethodService, hook Hook, headers http.Header) StoreBottleServer {
+	return implStoreBottleHandler{
+		hook:    hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "StoreBottle".
+func (impl implStoreBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, "github.com/gokit/rpkit/examples/bottles")
+	ctx = WithServiceSourcePackageName(ctx, "bottles")
+	ctx = WithServiceMethodName(ctx, "StoreBottle")
+	ctx = WithServiceMethodPath(ctx, StoreBottleServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, StoreBottleServiceRoutePath)
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package":     "github.com/gokit/rpkit/examples/bottles",
+			"api_base":    BaseServiceName,
+			"method":      "StoreBottle",
+			"api_service": MethodServiceName,
+			"route":       StoreBottleServiceRoute,
+			"api":         "bottles.IBoxCellar",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/bottles")
+		w.Header().Add("X-Method", "StoreBottle")
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", StoreBottleServiceRoute)
+		w.Header().Add("X-Package-Interface", "bottles.IBoxCellar")
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.URL.Path != StoreBottleServiceRoutePath {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+StoreBottleServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package":     "github.com/gokit/rpkit/examples/bottles",
+			"api_base":    BaseServiceName,
+			"method":      "StoreBottle",
+			"api_service": MethodServiceName,
+			"route":       StoreBottleServiceRoute,
+			"api":         "bottles.IBoxCellar",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/bottles")
+	w.Header().Add("X-Method", "StoreBottle")
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", StoreBottleServiceRoute)
+	w.Header().Add("X-Package-Interface", "bottles.IBoxCellar")
+
+	w.WriteHeader(http.StatusOK)
+
+	var actionErr error
+	func() {
+		defer func() {
+			if rerr := recover(); rerr != nil {
+				derr := fmt.Errorf("panic err: %+q", rerr)
+				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+					"package":     "github.com/gokit/rpkit/examples/bottles",
+					"api_base":    BaseServiceName,
+					"method":      "StoreBottle",
+					"api_service": MethodServiceName,
+					"route":       StoreBottleServiceRoute,
+					"api":         "bottles.IBoxCellar",
+				})
+				panic(rerr)
+			}
+		}()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+		actionErr = impl.service(ctx, r.Body)
+	}()
+
+	if actionErr != nil {
+		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+			"package":     "github.com/gokit/rpkit/examples/bottles",
+			"api_base":    BaseServiceName,
+			"method":      "StoreBottle",
+			"api_service": MethodServiceName,
+			"route":       StoreBottleServiceRoute,
+			"api":         "bottles.IBoxCellar",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+
+//****************************************************************************
+// RP: Input And Output Returning Error methods
+// Method: GetBox
+// Source: github.com/gokit/rpkit/examples/bottles
+// Handler: bottles.IBoxCellar.GetBox
+//****************************************************************************
+
+// GetBoxServiceRoute defines the route for the GetBox method.
+const GetBoxServiceRoute = "gokit.rpkit.examples.bottles.IBoxCellar/GetBox"
+
+// GetBoxServiceRoutePath defines the full method path for the GetBox method.
+const GetBoxServiceRoutePath = "/gokit.rpkit.examples.bottles.IBoxCellar/GetBox"
+
+// getboxServiceRoutePathURL defines a parsed path for the GetBox, it
+// ensures the created path is valid as a url.
+var getboxServiceRoutePathURL = mustSimpleParseURL(GetBoxServiceRoutePath)
+
+// GetBoxContractSource contains the source version of expected method contract.
+const GetBoxContractSource = `type GetBoxMethodContract interface {
+	GetBox(var1 context.Context,var2 string)  (bottles.IBox,error)  
+}
+`
+
+// GetBoxMethodContract defines a contract interface for method "GetBox"
+// provided by "bottles.IBoxCellar" in "github.com/gokit/rpkit/examples/bottles". It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type GetBoxMethodContract interface {
+	GetBox(var1 context.Context, var2 string) (bottles.IBox, error)
+}
+
+// GetBoxDecoder defines a interface which expose a single method to decode the request data
+// expected by GetBoxMethodContract.GetBox.
+type GetBoxDecoder interface {
+	Decode(io.Reader) (string, error)
+}
+
+// GetBoxEncoder defines a interface which expose a single method to encode the response
+// returned by GetBoxMethodContract.GetBox.
+type GetBoxEncoder interface {
+	Encode(io.Writer, bottles.IBox) error
+}
+
+// GetBoxMethodService defines the returned signature by the ServiceGetBox
+// which executes it's internal behaviour based off on it's GetBoxMethodContract.
+type GetBoxMethodService func(context.Context, io.Writer, io.Reader) error
+
+// ServeGetBoxMethod implements the core contract behaviour to service "GetBox"
+// from "bottles.IBoxCellar" in "github.com/gokit/rpkit/examples/bottles".
+// It returns a function that can be used within any transport layer to process, to said execute
+// behaviour of method as a service.
+func ServeGetBoxMethod(provider GetBoxMethodContract, encoder GetBoxEncoder, decoder GetBoxDecoder) GetBoxMethodService {
+	return func(ctx context.Context, w io.Writer, r io.Reader) error {
+		input, err := decoder.Decode(r)
+		if err != nil {
+			return err
+		}
+
+		res, err := provider.GetBox(ctx, input)
+
+		if err != nil {
+			return err
+		}
+
+		return encoder.Encode(w, res)
+	}
+}
+
+// GetBoxClientEncoder defines a interface which expose a single method to encode the request
+// data sent by GetBoxClientContract.GetBox.
+type GetBoxClientEncoder interface {
+	Encode(io.Writer, string) error
+}
+
+// GetBoxClientDecoder defines a interface which expose a single method to decode the response
+// returned by GetBoxClientContract.GetBox.
+type GetBoxClientDecoder interface {
+	Decode(io.Reader) (bottles.IBox, error)
+}
+
+// GetBoxClientContract defines a contract interface for clients to make request to GetBoxServer.
+type GetBoxClientContract interface {
+	GetBox(var1 context.Context, var2 string) (bottles.IBox, error)
+}
+
+// NewGetBoxMethodClient returns a new GetBoxMethodContract it relies on
+// NewGetBoxMethodContractClient.
+func NewGetBoxMethodClient(addr string, client HTTPClient, encoder GetBoxClientEncoder, decoder GetBoxClientDecoder) (GetBoxClientContract, error) {
+	return NewGetBoxMethodContractClient(addr, client, encoder, decoder, nil, nil)
+}
+
+// NewGetBoxMethodContractClient returns a new GetBoxMethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a GetBoxServer to
+// perform action as specified by contract.
+func NewGetBoxMethodContractClient(addr string, client HTTPClient, encoder GetBoxClientEncoder, decoder GetBoxClientDecoder, act ActWithRequest, resv ResponseValidation) (GetBoxClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return implGetBoxClient{
+		actor:   act,
+		resval:  resv,
+		rootURL: root,
+		encoder: encoder,
 		decoder: decoder,
 		client:  skipRedirects(client),
 	}, nil
 }
 
-type implCellarClient struct {
+type implGetBoxClient struct {
 	rootURL *url.URL
 	client  HTTPClient
 	actor   ActWithRequest
 	resval  ResponseValidation
-	decoder CellarClientDecoder
+	encoder GetBoxClientEncoder
+	decoder GetBoxClientDecoder
 }
 
-// Cellar makes a request to the server's address with provided arguments and returns
+// GetBox makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implCellarClient) Cellar(ctx context.Context) (*cellar.Cellar, error) {
+func (imp implGetBoxClient) GetBox(var1 context.Context, var2 string) (bottles.IBox, error) {
 	// targetURL for the requests to be made.
-	targetURL := imp.rootURL.ResolveReference(cellarServiceRoutePathURL)
+	targetURL := imp.rootURL.ResolveReference(getboxServiceRoutePathURL)
 
-	ctx = WithRequestMethod(ctx, "POST")
-	ctx = WithClientRequestURI(ctx, targetURL.String())
-	ctx = WithRequestTransport(ctx, "RPKIT:HTTP:CLIENT")
+	var1 = WithRequestMethod(var1, "POST")
+	var1 = WithClientRequestURI(var1, targetURL.String())
+	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
 
-	var result *cellar.Cellar
-	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	var result bottles.IBox
+	var body bytes.Buffer
+	if err := imp.encoder.Encode(&body, var2); err != nil {
+		return result, err
+	}
+
+	req, err := http.NewRequest("POST", targetURL.String(), &body)
 	if err != nil {
 		return result, err
 	}
 
-	if header, err := CtxCustomHeader(ctx); err == nil {
+	if header, err := CtxCustomHeader(var1); err == nil {
 		for key, list := range header {
 			req.Header[key] = append(req.Header[key], list...)
 		}
@@ -468,353 +824,33 @@ func (imp implCellarClient) Cellar(ctx context.Context) (*cellar.Cellar, error) 
 	}
 
 	return result, nil
+
 }
 
-// CellarServer implements a http.Handler for servicing the method Cellar
-// from bottles.BottleCellar.
-type CellarServer interface {
+// GetBoxServer implements a http.Handler for servicing the method GetBox
+// from bottles.IBoxCellar.
+type GetBoxServer interface {
 	http.Handler
 }
 
-type implCellarHandler struct {
+type implGetBoxHandler struct {
 	hook    Hook
 	headers http.Header
-	service CellarMethodService
+	service GetBoxMethodService
 }
 
-// NewCellarServer returns a new instance of the HTTPHandler which services all
-// http requests for giving method bottles.BottleCellar.Cellar.
-func NewCellarServer(service CellarMethodService, hook Hook, headers http.Header) CellarServer {
-	return implCellarHandler{
+// NewGetBoxServer returns a new instance of the HTTPHandler which services all
+// http requests for giving method bottles.IBoxCellar.GetBox.
+func NewGetBoxServer(service GetBoxMethodService, hook Hook, headers http.Header) GetBoxServer {
+	return implGetBoxHandler{
 		hook:    hook,
 		headers: headers,
 		service: service,
 	}
 }
 
-// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "Cellar".
-func (impl implCellarHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctx = WithRequest(ctx, r)
-	ctx = WithResponseWriter(ctx, w)
-	ctx = WithCustomHeader(ctx, impl.headers)
-	ctx = WithRequestMethod(ctx, r.Method)
-	ctx = WithRequestHeader(ctx, r.Header)
-	ctx = WithServiceName(ctx, BaseServiceName)
-	ctx = WithServicePath(ctx, MethodServiceName)
-	ctx = WithServicePackage(ctx, ServiceCodePath)
-	ctx = WithServicePackageName(ctx, ServiceCodePathName)
-	ctx = WithServiceSourcePackage(ctx, "github.com/gokit/rpkit/examples/bottles")
-	ctx = WithServiceSourcePackageName(ctx, "bottles")
-	ctx = WithServiceMethodName(ctx, "Cellar")
-	ctx = WithServiceMethodPath(ctx, CellarServiceRoute)
-	ctx = WithServiceMethodRoute(ctx, CellarServiceRoutePath)
-
-	if impl.hook != nil {
-		impl.hook.RequestReceived(ctx)
-	}
-
-	if r.Method != "POST" && r.Method != "HEAD" {
-		if impl.hook != nil {
-			impl.hook.RequestRejected(ctx)
-		}
-
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
-			"package":     "github.com/gokit/rpkit/examples/bottles",
-			"api_base":    BaseServiceName,
-			"method":      "Cellar",
-			"api_service": MethodServiceName,
-			"route":       CellarServiceRoute,
-			"api":         "bottles.BottleCellar",
-		})
-		return
-	}
-
-	if r.Method == "HEAD" {
-		for key, vals := range impl.headers {
-			for _, item := range vals {
-				w.Header().Add(key, item)
-			}
-		}
-
-		w.Header().Add("X-Agent", "RPKIT")
-		w.Header().Add("X-Service", BaseServiceName)
-		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/bottles")
-		w.Header().Add("X-Method", "Cellar")
-		w.Header().Add("X-Method-Service", MethodServiceName)
-		w.Header().Add("X-API-Route", CellarServiceRoute)
-		w.Header().Add("X-Package-Interface", "bottles.BottleCellar")
-
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	if r.URL.Path != CellarServiceRoutePath {
-		if impl.hook != nil {
-			impl.hook.RequestRejected(ctx)
-		}
-
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+CellarServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
-			"package":     "github.com/gokit/rpkit/examples/bottles",
-			"api_base":    BaseServiceName,
-			"method":      "Cellar",
-			"api_service": MethodServiceName,
-			"route":       CellarServiceRoute,
-			"api":         "bottles.BottleCellar",
-		})
-		return
-	}
-
-	if impl.hook != nil {
-		impl.hook.RequestAccepted(ctx)
-	}
-
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
-
-	for key, vals := range impl.headers {
-		for _, item := range vals {
-			w.Header().Add(key, item)
-		}
-	}
-
-	w.Header().Add("X-Agent", "RPKIT")
-	w.Header().Add("X-Service", BaseServiceName)
-	w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/bottles")
-	w.Header().Add("X-Method", "Cellar")
-	w.Header().Add("X-Method-Service", MethodServiceName)
-	w.Header().Add("X-API-Route", CellarServiceRoute)
-	w.Header().Add("X-Package-Interface", "bottles.BottleCellar")
-
-	w.WriteHeader(http.StatusOK)
-
-	var actionErr error
-	func() {
-		defer func() {
-			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
-					"package":     "github.com/gokit/rpkit/examples/bottles",
-					"api_base":    BaseServiceName,
-					"method":      "Cellar",
-					"api_service": MethodServiceName,
-					"route":       CellarServiceRoute,
-					"api":         "bottles.BottleCellar",
-				})
-				panic(rerr)
-			}
-		}()
-
-		if impl.hook != nil {
-			impl.hook.RequestProcessed(ctx)
-		}
-
-		actionErr = impl.service(ctx, w)
-	}()
-
-	if actionErr != nil {
-		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
-			"package":     "github.com/gokit/rpkit/examples/bottles",
-			"api_base":    BaseServiceName,
-			"method":      "Cellar",
-			"api_service": MethodServiceName,
-			"route":       CellarServiceRoute,
-			"api":         "bottles.BottleCellar",
-		})
-		return
-	}
-
-	if impl.hook != nil {
-		impl.hook.ResponseSent(ctx)
-	}
-}
-
-//****************************************************************************
-// RP: Input Returning Only Error methods
-// Method: AddBottle
-// Source: github.com/gokit/rpkit/examples/bottles
-// Handler: bottles.BottleCellar.AddBottle
-//****************************************************************************
-
-// AddBottleServiceRoute defines the route for the AddBottle method.
-const AddBottleServiceRoute = "gokit.rpkit.examples.bottles.BottleCellar/AddBottle"
-
-// AddBottleServiceRoutePath defines the full method path for the AddBottle method.
-const AddBottleServiceRoutePath = "/gokit.rpkit.examples.bottles.BottleCellar/AddBottle"
-
-// addbottleServiceRoutePathURL defines a parsed path for the AddBottle, it
-// ensures the created path is valid as a url.
-var addbottleServiceRoutePathURL = mustSimpleParseURL(AddBottleServiceRoutePath)
-
-// AddBottleContractSource contains the source version of expected method contract.
-const AddBottleContractSource = `type AddBottleMethodContract interface {
-	AddBottle(var1 string)  error  
-}
-`
-
-// AddBottleMethodContract defines a contract interface for method "AddBottle"
-// provided by "bottles.BottleCellar" in "github.com/gokit/rpkit/examples/bottles". It allows us
-// establish a simple contract suitable for meeting the needs of said method.
-type AddBottleMethodContract interface {
-	AddBottle(var1 string) error
-}
-
-// AddBottleDecoder defines a interface which expose a single method to decode the request data
-// expected by AddBottleMethodContract.AddBottle.
-type AddBottleDecoder interface {
-	Decode(io.Reader) (string, error)
-}
-
-// AddBottleMethodService defines the returned signature by the ServiceAddBottle
-// which executes it's internal behaviour based off on it's AddBottleMethodContract.
-type AddBottleMethodService func(context.Context, io.Reader) error
-
-// ServeAddBottleMethod implements the core contract behaviour to service "AddBottle"
-// from "bottles.BottleCellar" in "github.com/gokit/rpkit/examples/bottles".
-// It returns a function that can be used within any transport layer to process, to said execute
-// behaviour of method as a service.
-func ServeAddBottleMethod(provider AddBottleMethodContract, decoder AddBottleDecoder) AddBottleMethodService {
-	return func(ctx context.Context, r io.Reader) error {
-		input, err := decoder.Decode(r)
-		if err != nil {
-			return err
-		}
-
-		return provider.AddBottle(input)
-
-	}
-}
-
-// AddBottleClientEncoder defines a interface which expose a single method to encode the request
-// data sent by AddBottleClientContract.AddBottle.
-type AddBottleClientEncoder interface {
-	Encode(io.Writer, string) error
-}
-
-// AddBottleClientContract defines a contract interface for clients to make request to AddBottleServer.
-type AddBottleClientContract interface {
-	AddBottle(ctx context.Context, var1 string) error
-}
-
-// NewAddBottleMethodClient returns a new AddBottleMethodContract it relies on
-// NewAddBottleMethodContractClient.
-func NewAddBottleMethodClient(addr string, client HTTPClient, encoder AddBottleClientEncoder) (AddBottleClientContract, error) {
-	return NewAddBottleMethodContractClient(addr, client, encoder, nil, nil)
-}
-
-// NewAddBottleMethodContractClient returns a new AddBottleMethodContract implementation, which
-// will make it's call to provided address with the provided http.Client to a AddBottleServer to
-// perform action as specified by contract.
-func NewAddBottleMethodContractClient(addr string, client HTTPClient, encoder AddBottleClientEncoder, act ActWithRequest, resv ResponseValidation) (AddBottleClientContract, error) {
-	root, err := parseURL(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	return implAddBottleClient{
-		actor:   act,
-		resval:  resv,
-		rootURL: root,
-		encoder: encoder,
-		client:  skipRedirects(client),
-	}, nil
-}
-
-type implAddBottleClient struct {
-	rootURL *url.URL
-	client  HTTPClient
-	actor   ActWithRequest
-	resval  ResponseValidation
-	encoder AddBottleClientEncoder
-}
-
-// AddBottle makes a request to the server's address with provided arguments and returns
-// response received from server.
-func (imp implAddBottleClient) AddBottle(ctx context.Context, var1 string) error {
-	// targetURL for the requests to be made.
-	targetURL := imp.rootURL.ResolveReference(addbottleServiceRoutePathURL)
-
-	ctx = WithRequestMethod(ctx, "POST")
-	ctx = WithClientRequestURI(ctx, targetURL.String())
-	ctx = WithRequestTransport(ctx, "RPKIT:HTTP:CLIENT")
-
-	req, err := http.NewRequest("POST", targetURL.String(), nil)
-	if err != nil {
-		return err
-	}
-
-	if header, err := CtxCustomHeader(ctx); err == nil {
-		for key, list := range header {
-			req.Header[key] = append(req.Header[key], list...)
-		}
-	}
-
-	if imp.actor != nil {
-		imp.actor(req)
-	}
-
-	res, err := imp.client.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer res.Body.Close()
-
-	if imp.resval != nil {
-		if err := imp.resval(res); err != nil {
-			return err
-		}
-	}
-
-	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
-		return ErrServerInternalProblem
-	}
-
-	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
-		return ErrBadRequest
-	}
-
-	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
-		return ErrServerRejectedRequest
-	}
-
-	return nil
-}
-
-// AddBottleServer implements a http.Handler for servicing the method AddBottle
-// from bottles.BottleCellar.
-type AddBottleServer interface {
-	http.Handler
-}
-
-type implAddBottleHandler struct {
-	hook    Hook
-	headers http.Header
-	service AddBottleMethodService
-}
-
-// NewAddBottleServer returns a new instance of the HTTPHandler which services all
-// http requests for giving method bottles.BottleCellar.AddBottle.
-func NewAddBottleServer(service AddBottleMethodService, hook Hook, headers http.Header) AddBottleServer {
-	return implAddBottleHandler{
-		hook:    hook,
-		headers: headers,
-		service: service,
-	}
-}
-
-// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "AddBottle".
-func (impl implAddBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "GetBox".
+func (impl implGetBoxHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	ctx := r.Context()
@@ -829,9 +865,9 @@ func (impl implAddBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	ctx = WithServicePackageName(ctx, ServiceCodePathName)
 	ctx = WithServiceSourcePackage(ctx, "github.com/gokit/rpkit/examples/bottles")
 	ctx = WithServiceSourcePackageName(ctx, "bottles")
-	ctx = WithServiceMethodName(ctx, "AddBottle")
-	ctx = WithServiceMethodPath(ctx, AddBottleServiceRoute)
-	ctx = WithServiceMethodRoute(ctx, AddBottleServiceRoutePath)
+	ctx = WithServiceMethodName(ctx, "GetBox")
+	ctx = WithServiceMethodPath(ctx, GetBoxServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, GetBoxServiceRoutePath)
 
 	if impl.hook != nil {
 		impl.hook.RequestReceived(ctx)
@@ -845,10 +881,10 @@ func (impl implAddBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package":     "github.com/gokit/rpkit/examples/bottles",
 			"api_base":    BaseServiceName,
-			"method":      "AddBottle",
+			"method":      "GetBox",
 			"api_service": MethodServiceName,
-			"route":       AddBottleServiceRoute,
-			"api":         "bottles.BottleCellar",
+			"route":       GetBoxServiceRoute,
+			"api":         "bottles.IBoxCellar",
 		})
 		return
 	}
@@ -863,27 +899,27 @@ func (impl implAddBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/bottles")
-		w.Header().Add("X-Method", "AddBottle")
+		w.Header().Add("X-Method", "GetBox")
 		w.Header().Add("X-Method-Service", MethodServiceName)
-		w.Header().Add("X-API-Route", AddBottleServiceRoute)
-		w.Header().Add("X-Package-Interface", "bottles.BottleCellar")
+		w.Header().Add("X-API-Route", GetBoxServiceRoute)
+		w.Header().Add("X-Package-Interface", "bottles.IBoxCellar")
 
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if r.URL.Path != AddBottleServiceRoutePath {
+	if r.URL.Path != GetBoxServiceRoutePath {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+AddBottleServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+GetBoxServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package":     "github.com/gokit/rpkit/examples/bottles",
 			"api_base":    BaseServiceName,
-			"method":      "AddBottle",
+			"method":      "GetBox",
 			"api_service": MethodServiceName,
-			"route":       AddBottleServiceRoute,
-			"api":         "bottles.BottleCellar",
+			"route":       GetBoxServiceRoute,
+			"api":         "bottles.IBoxCellar",
 		})
 		return
 	}
@@ -905,10 +941,10 @@ func (impl implAddBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	w.Header().Add("X-Agent", "RPKIT")
 	w.Header().Add("X-Service", BaseServiceName)
 	w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/bottles")
-	w.Header().Add("X-Method", "AddBottle")
+	w.Header().Add("X-Method", "GetBox")
 	w.Header().Add("X-Method-Service", MethodServiceName)
-	w.Header().Add("X-API-Route", AddBottleServiceRoute)
-	w.Header().Add("X-Package-Interface", "bottles.BottleCellar")
+	w.Header().Add("X-API-Route", GetBoxServiceRoute)
+	w.Header().Add("X-Package-Interface", "bottles.IBoxCellar")
 
 	w.WriteHeader(http.StatusOK)
 
@@ -920,10 +956,10 @@ func (impl implAddBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package":     "github.com/gokit/rpkit/examples/bottles",
 					"api_base":    BaseServiceName,
-					"method":      "AddBottle",
+					"method":      "GetBox",
 					"api_service": MethodServiceName,
-					"route":       AddBottleServiceRoute,
-					"api":         "bottles.BottleCellar",
+					"route":       GetBoxServiceRoute,
+					"api":         "bottles.IBoxCellar",
 				})
 				panic(rerr)
 			}
@@ -933,17 +969,17 @@ func (impl implAddBottleHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			impl.hook.RequestProcessed(ctx)
 		}
 
-		actionErr = impl.service(ctx, r.Body)
+		actionErr = impl.service(ctx, w, r.Body)
 	}()
 
 	if actionErr != nil {
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package":     "github.com/gokit/rpkit/examples/bottles",
 			"api_base":    BaseServiceName,
-			"method":      "AddBottle",
+			"method":      "GetBox",
 			"api_service": MethodServiceName,
-			"route":       AddBottleServiceRoute,
-			"api":         "bottles.BottleCellar",
+			"route":       GetBoxServiceRoute,
+			"api":         "bottles.IBoxCellar",
 		})
 		return
 	}

@@ -323,7 +323,7 @@ const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.N
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
-var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
 
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
@@ -683,7 +683,7 @@ const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.N
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
-var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
 
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
@@ -1043,7 +1043,7 @@ const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.N
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
-var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
 
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
@@ -1138,10 +1138,12 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
+	
+	var result {{$retType.ExType}}
 
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -1156,51 +1158,52 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}}, err
+			return result, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+		return result, ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil{{else}}{{ $ctxVar := "ctx" }}
+	return result, nil{{else}}{{ $ctxVar := "ctx" }}
 	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
 
+	var result {{$retType.ExType}}
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -1215,44 +1218,44 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}}, err
+			return result, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+		return result, ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil{{end}}
+	return result, nil{{end}}
 }
 
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
@@ -1430,7 +1433,7 @@ const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.N
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
-var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
 
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
@@ -1523,9 +1526,10 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
 
+	var result {{$retType.ExType}}
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -1540,51 +1544,52 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}}, err
+			return result, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+		return result, ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil{{else}}{{ $ctxVar := "ctx" }}
+	return result, nil{{else}}{{ $ctxVar := "ctx" }}
 	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
 
+	var result {{$retType.ExType}}
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -1599,44 +1604,44 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}}, err
+			return result, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerInternalProblem
+		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrBadRequest
+		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}}, jsonErr
+			return result, jsonErr
 		}
-		return {{defaultGoType $retType.ExType}}, ErrServerRejectedRequest
+		return result, ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil{{end}}
+	return result, nil{{end}}
 }
 
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
@@ -1815,7 +1820,7 @@ const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.N
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
-var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
 
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
@@ -2201,7 +2206,7 @@ const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.N
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
-var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
 
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
@@ -2314,14 +2319,15 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
 
+	var result {{$retType.ExType}}
 	var body bytes.Buffer
 	if err := imp.encoder.Encode(&body, {{$inVarArg.Name}}); err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	req, err := http.NewRequest("POST", targetURL.String(), &body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -2336,52 +2342,53 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}},err
+		return result,err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}},err
+			return result,err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrBadRequest
+		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+		return result,ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil
+	return result, nil
 	{{else}}{{ $ctxVar := "ctx" }}
 	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
 
+	var result {{$retType.ExType}}
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}},err
+		return result,err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -2396,44 +2403,44 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}}, err
+			return result, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrBadRequest
+		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+		return result,ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil{{end}}
+	return result, nil{{end}}
 }
 
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
@@ -2614,7 +2621,7 @@ const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.N
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
-var {{toLower $method.Name}}ServiceRoutePathURL = mustParseURL({{$method.Name}}ServiceRoutePath)
+var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
 
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
@@ -2730,14 +2737,15 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
 
+	var result {{$retType.ExType}}
 	var body bytes.Buffer
 	if err := imp.encoder.Encode(&body, {{$inVarArg.Name}}); err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	req, err := http.NewRequest("POST", targetURL.String(), &body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -2752,52 +2760,53 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}},err
+		return result,err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}},err
+			return result,err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrBadRequest
+		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+		return result,ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil
+	return result, nil
 	{{else}}{{ $ctxVar := "ctx" }}
 	{{$ctxVar}} = WithRequestMethod({{$ctxVar}}, "POST")
 	{{$ctxVar}} = WithClientRequestURI({{$ctxVar}}, targetURL.String())
 	{{$ctxVar}} = WithRequestTransport({{$ctxVar}}, "RPKIT:HTTP:CLIENT")
 
+	var result {{$retType.ExType}}
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}},err
+		return result,err
 	}
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
@@ -2812,44 +2821,44 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 
 	res, err := imp.client.Do(req)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
 	defer res.Body.Close()
 
 	if imp.resval != nil {
 		if err := imp.resval(res); err != nil {
-			return {{defaultGoType $retType.ExType}}, err
+			return result, err
 		}
 	}
 
 	if requestFacedInternalIssues(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerInternalProblem
+		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrBadRequest
+		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
 		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return {{defaultGoType $retType.ExType}},jsonErr
+			return result,jsonErr
 		}
-		return {{defaultGoType $retType.ExType}},ErrServerRejectedRequest
+		return result,ErrServerRejectedRequest
 	}
 
-	rec, err := imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(res.Body)
 	if err != nil {
-		return {{defaultGoType $retType.ExType}}, err
+		return result, err
 	}
 
-	return rec, nil{{end}}
+	return result, nil{{end}}
 }
 
 // {{$method.Name}}Server implements a http.Handler for servicing the method {{$method.Name}}
@@ -3048,12 +3057,23 @@ func requestSucceeded(res *http.Response) bool {
 	return false
 }
 
-// mustParseURL attempts to parse provided access using parseURL, it panics
+// mustSimpleParseURL attempts to parse provided access using simpleParseURL, it panics
 // if an error occured.
-func mustParseURL(addr string) *url.URL {
-	parsed, err := parseURL(addr)
+func mustSimpleParseURL(addr string) *url.URL {
+	parsed, err := simpleParseURL(addr)
 	if err == nil { return parsed }
 	panic(`failed to parse url: `+addr+` , error occurred: `+err.Error())
+}
+
+// simpleParseURL parses giving address returning *url.URL instance for address if
+// it's a valid address. Returns an error if address is an invalid URL.
+func simpleParseURL(addr string) (*url.URL, error) {
+	parsed, err := url.Parse(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return parsed, nil
 }
 
 // parseURL parses giving address returning *url.URL instance for address if
