@@ -268,6 +268,7 @@ methodLoop:
 				),
 				struct {
 					ServiceName                    string
+					IServiceName                   string
 					TargetPackage                  string
 					ImplPackageName                string
 					UsesInternal                   bool
@@ -300,6 +301,7 @@ methodLoop:
 					InputAndOutputMethods:          inputWithOutputOnlyMethods,
 					InputAndOutputWithErrorMethods: inputWithOutputWithErrorMethods,
 					ServiceName:                    strings.Join(sections, "."),
+					IServiceName:                   strings.Join(sections, "/"),
 				},
 			),
 		),
@@ -336,6 +338,7 @@ methodLoop:
 				),
 				struct {
 					ServiceName                    string
+					IServiceName                   string
 					TargetPackage                  string
 					ImplPackageName                string
 					UsesInternal                   bool
@@ -368,6 +371,7 @@ methodLoop:
 					InputAndOutputMethods:          inputWithOutputOnlyMethods,
 					InputAndOutputWithErrorMethods: inputWithOutputWithErrorMethods,
 					ServiceName:                    strings.Join(sections, "."),
+					IServiceName:                   strings.Join(sections, "/"),
 				},
 			),
 		),

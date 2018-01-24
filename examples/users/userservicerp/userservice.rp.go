@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gokit/rpkit/examples/users"
 )
@@ -22,7 +23,7 @@ const (
 	BaseServiceName = "gokit.rpkit.examples.users"
 
 	// MethodServiceName defines the complete name of this giving API service.
-	MethodServiceName = "gokit.rpkit.examples.users.UserService"
+	MethodServiceName = "gokit.rpkit.examples.users/UserService"
 
 	// ServiceCodePath defines the path to this generated package which contains the implemented service methods.
 	ServiceCodePath = "github.com/gokit/rpkit/examples/users/userservicerp"
@@ -38,6 +39,7 @@ var (
 	ErrInvalidRequestURI     = errors.New("invalid request uri")
 	ErrBadRequest            = errors.New("server rejected request as bad")
 	ErrInvalidRequestMethod  = errors.New("invalid request method")
+	ErrInvalidContentType    = errors.New("invalid request content type")
 	ErrServerInternalProblem = errors.New("server had internal problems")
 	ErrServerRejectedRequest = errors.New("server does not handle request type/method")
 )
@@ -288,6 +290,20 @@ type ActWithRequest func(*http.Request)
 // steps.
 type ResponseValidation func(*http.Response) error
 
+// JSONErrorResponse defines a structure to contain error message data
+// delivered by the server.
+type JSONErrorResponse struct {
+	Code    int                    `json:"code"`
+	Err     []byte                 `json:"err"`
+	Message string                 `json:"message"`
+	Meta    map[string]interface{} `json:"meta"`
+}
+
+// Error returns the underline error contents string.
+func (jse JSONErrorResponse) Error() string {
+	return jse.Message + " : " + string(jse.Err)
+}
+
 // Hook defines a interface for having access to different areas of
 // a call to the service of a method.
 //
@@ -318,7 +334,7 @@ type HTTPClient interface {
 const CreateServiceRoute = "gokit.rpkit.examples.users.UserService/Create"
 
 // CreateServiceRoutePath defines the full method path for the Create method.
-const CreateServiceRoutePath = "/gokit.rpkit.examples.users.UserService/Create"
+const CreateServiceRoutePath = "/gokit.rpkit.examples.users/UserService/Create"
 
 // createServiceRoutePathURL defines a parsed path for the Create, it
 // ensures the created path is valid as a url.
@@ -445,6 +461,7 @@ func (imp implCreateClient) Create(var1 context.Context, var2 users.NewUser) (us
 	if err != nil {
 		return result, err
 	}
+	req = req.WithContext(var1)
 
 	if header, err := CtxCustomHeader(var1); err == nil {
 		for key, list := range header {
@@ -470,23 +487,29 @@ func (imp implCreateClient) Create(var1 context.Context, var2 users.NewUser) (us
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return result, jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return result, jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return result, jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerRejectedRequest
 	}
 
@@ -550,7 +573,7 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package":     "github.com/gokit/rpkit/examples/users",
 			"api_base":    BaseServiceName,
 			"method":      "Create",
@@ -594,6 +617,24 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			"api":         "users.UserService",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype) {
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+					ErrInvalidContentType, map[string]interface{}{
+						"package":     "github.com/gokit/rpkit/examples/users",
+						"api_base":    BaseServiceName,
+						"method":      "Create",
+						"api_service": MethodServiceName,
+						"route":       CreateServiceRoute,
+						"api":         "users.UserService",
+					})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -766,8 +807,8 @@ func skipRedirects(in HTTPClient) HTTPClient {
 	return in
 }
 
-func loadJSONError(r io.Reader) (jsonErrorResponse, error) {
-	var res jsonErrorResponse
+func loadJSONError(r io.Reader) (JSONErrorResponse, error) {
+	var res JSONErrorResponse
 	if err := json.NewDecoder(r).Decode(&res); err != nil {
 		return res, err
 	}
@@ -775,11 +816,18 @@ func loadJSONError(r io.Reader) (jsonErrorResponse, error) {
 }
 
 func jsonWriteError(w http.ResponseWriter, code int, message string, err error, meta map[string]interface{}) {
-	var res jsonErrorResponse
+	var res JSONErrorResponse
 	res.Code = code
-	res.Err = err
 	res.Meta = meta
 	res.Message = message
+
+	if err != nil {
+		if data, badErr := json.Marshal(err); badErr == nil {
+			res.Err = data
+		} else {
+			res.Err = []byte(err.Error())
+		}
+	}
 
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
@@ -791,15 +839,4 @@ func jsonWriteError(w http.ResponseWriter, code int, message string, err error, 
 	}
 
 	log.Printf("unable to send error response for error %+q: %+q", err, err2)
-}
-
-type jsonErrorResponse struct {
-	Code    int                    `json:"code"`
-	Err     error                  `json:"err"`
-	Message string                 `json:"message"`
-	Meta    map[string]interface{} `json:"meta"`
-}
-
-func (jse jsonErrorResponse) Error() string {
-	return jse.Message + " " + jse.Err.Error()
 }

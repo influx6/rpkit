@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"bytes"
 	"errors"
+	"strings"
 	"fmt"
 	"io"
 	"log"
@@ -23,7 +24,7 @@ const (
 	BaseServiceName = {{quote .ServiceName}}
 
 	// MethodServiceName defines the complete name of this giving API service.
-	MethodServiceName = "{{.ServiceName}}.{{.Itr.Object.Name.Name}}"
+	MethodServiceName = "{{.ServiceName}}/{{.Itr.Object.Name.Name}}"
 
 	// ServiceCodePath defines the path to this generated package which contains the implemented service methods.
 	ServiceCodePath = "{{.TargetPackage}}"
@@ -39,6 +40,7 @@ var (
 	ErrInvalidRequestURI = errors.New("invalid request uri")
 	ErrBadRequest = errors.New("server rejected request as bad")
 	ErrInvalidRequestMethod = errors.New("invalid request method")
+	ErrInvalidContentType = errors.New("invalid request content type")
 	ErrServerInternalProblem = errors.New("server had internal problems")
 	ErrServerRejectedRequest = errors.New("server does not handle request type/method")
 )
@@ -289,6 +291,20 @@ type ActWithRequest func(*http.Request)
 // steps.
 type ResponseValidation func(*http.Response) error
 
+// JSONErrorResponse defines a structure to contain error message data
+// delivered by the server.
+type JSONErrorResponse struct{
+	Code int `json:"code"`
+	Err []byte `json:"err"`
+	Message string `json:"message"`
+	Meta map[string]interface{} `json:"meta"`
+}
+
+// Error returns the underline error contents string.
+func (jse JSONErrorResponse) Error() string {
+	return jse.Message + " : " + string(jse.Err)
+}
+
 // Hook defines a interface for having access to different areas of
 // a call to the service of a method.
 //
@@ -405,6 +421,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -430,23 +447,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerRejectedRequest
 	}
 	{{else}}{{ $ctxVar := "ctx" }}
@@ -458,6 +481,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -483,23 +507,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerRejectedRequest
 	}
 	{{end}}
@@ -556,7 +586,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -600,6 +630,24 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -764,6 +812,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -789,23 +838,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerRejectedRequest
 	}
 	{{else}}{{ $ctxVar := "ctx" }}
@@ -817,6 +872,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -842,23 +898,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerRejectedRequest
 	}
 	{{end}}
@@ -915,7 +977,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -959,6 +1021,24 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -1018,8 +1098,6 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
-
-
 	w.WriteHeader(http.StatusOK)
 
 	if impl.hook != nil {
@@ -1145,6 +1223,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return result, err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -1170,23 +1249,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
 			return result, jsonErr
 		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerRejectedRequest
 	}
 
@@ -1205,6 +1290,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return result, err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -1230,23 +1316,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerRejectedRequest
 	}
 
@@ -1307,7 +1399,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1351,6 +1443,24 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -1531,6 +1641,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return result, err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -1556,23 +1667,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body) 
+	    if err == nil {
+		  return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerRejectedRequest
 	}
 
@@ -1591,6 +1708,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return result, err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -1616,23 +1734,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result, jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	    if err == nil {
+		  return result, jsonErr
+	     }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result, ErrServerRejectedRequest
 	}
 
@@ -1693,7 +1817,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1737,6 +1861,24 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -1926,6 +2068,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -1951,23 +2094,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerRejectedRequest
 	}
 	{{else}}{{ $ctxVar := "ctx" }}
@@ -1979,6 +2128,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -2004,23 +2154,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return ErrServerRejectedRequest
 	}
 	{{end}}
@@ -2079,7 +2235,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2123,6 +2279,24 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -2325,10 +2499,11 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 		return result, err
 	}
 
-	req, err := http.NewRequest("POST", targetURL.String(), &body)
-	if err != nil {
-		return result, err
-	}
+     req, err := http.NewRequest("POST", targetURL.String(), &body)
+      if err != nil {
+           return result, err
+      }
+      req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -2354,23 +2529,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerRejectedRequest
 	}
 
@@ -2390,6 +2571,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return result,err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -2415,23 +2597,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerRejectedRequest
 	}
 
@@ -2494,7 +2682,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2538,6 +2726,24 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -2617,8 +2823,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
-const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
-
+const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}/{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
 var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)
@@ -2743,10 +2948,11 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 		return result, err
 	}
 
-	req, err := http.NewRequest("POST", targetURL.String(), &body)
-	if err != nil {
-		return result, err
-	}
+     req, err := http.NewRequest("POST", targetURL.String(), &body)
+      if err != nil {
+           return result, err
+      }
+      req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -2772,23 +2978,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerRejectedRequest
 	}
 
@@ -2808,6 +3020,7 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	if err != nil {
 		return result,err
 	}
+	req = req.WithContext({{$ctxVar}})
 
 	if header, err := CtxCustomHeader({{$ctxVar}}); err == nil {
 		for key, list := range header {
@@ -2833,23 +3046,29 @@ func (imp impl{{$method.Name}}Client) {{$method.Name}}({{if equal ($method.ArgTy
 	}
 
 	if requestFacedInternalIssues(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerInternalProblem
 	}
 
 	if requestFailed(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrBadRequest
 	}
 
 	if requestRedirected(res) {
-		if jsonErr, err := loadJSONError(res.Body); err == nil {
-			return result,jsonErr
-		}
+		jsonErr, err := loadJSONError(res.Body)
+	   if err == nil {
+		return result, jsonErr
+	    }
+	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerRejectedRequest
 	}
 
@@ -2912,7 +3131,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2956,6 +3175,24 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
 		})
 		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": {{quote $Itr.Path}},
+					"api_base": BaseServiceName,
+					"method": {{quote $method.Name}},
+					"api_service": MethodServiceName,
+					"route": {{$method.Name}}ServiceRoute,
+					"api": "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+				})
+				return
+			}
+		}
 	}
 
 	if impl.hook != nil {
@@ -3107,8 +3344,6 @@ func joinURL(root *url.URL, addr string) (*url.URL, error) {
 
 	return parsed, nil
 }
-
-
 // skipRedirects copies giving http.Client and fix issue with possible redirects
 // in go1.8 when a post receives a status code which is undesired. Such has 302, 303,
 // and 301s.
@@ -3128,8 +3363,8 @@ func skipRedirects(in HTTPClient) HTTPClient {
 	return in
 }
 
-func loadJSONError(r io.Reader) (jsonErrorResponse, error) {
-	var res jsonErrorResponse
+func loadJSONError(r io.Reader) (JSONErrorResponse, error) {
+	var res JSONErrorResponse
 	if err := json.NewDecoder(r).Decode(&res); err != nil {
 		return res, err
 	}
@@ -3137,11 +3372,18 @@ func loadJSONError(r io.Reader) (jsonErrorResponse, error) {
 }
 
 func jsonWriteError(w http.ResponseWriter, code int, message string, err error, meta map[string]interface{}){
-	var res jsonErrorResponse
+	var res JSONErrorResponse
 	res.Code = code
-	res.Err = err
 	res.Meta = meta
 	res.Message = message
+
+	if err != nil {
+	  if data, badErr := json.Marshal(err); badErr == nil {
+	    res.Err = data
+	  }else{
+	    res.Err = []byte(err.Error())
+	  }
+	}
 
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
@@ -3153,16 +3395,5 @@ func jsonWriteError(w http.ResponseWriter, code int, message string, err error, 
 	}
 
 	log.Printf("unable to send error response for error %+q: %+q", err, err2)
-}
-
-type jsonErrorResponse struct{
-	Code int `json:"code"`
-	Err error `json:"err"`
-	Message string `json:"message"`
-	Meta map[string]interface{} `json:"meta"`
-}
-
-func (jse jsonErrorResponse) Error() string {
-	return jse.Message + " " + jse.Err.Error()
 }
 
