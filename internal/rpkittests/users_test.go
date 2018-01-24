@@ -2,7 +2,6 @@ package rpkittests
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,12 +20,6 @@ var (
 	}
 )
 
-type NewUserDecoder struct{}
-
-func (NewUserDecoder) Decode(r io.Reader) (users.NewUser, error) {
-
-}
-
 func TestRpkitGeneratedUserServer(t *testing.T) {
 	var impl users.UserServiceImpl
 	impl.CreateFunc = func(var1 context.Context, var2 users.NewUser) (users.User, error) {
@@ -36,12 +29,12 @@ func TestRpkitGeneratedUserServer(t *testing.T) {
 	header := http.Header{}
 	header.Set("Content-Type", "application/json")
 
-	encoder := userservicerp.UserTypeEncoder{userservicerp.JSONEncoder{}}
-	decoder := userservicerp.NewUserTypeDecoder{userservicerp.CreateJSONDecoder{}}
-	clientEncoder := userservicerp.CreateClientEncoderWrapper{userservicerp.JSONEncoder{}}
-	clientDecoder := userservicerp.CreateClientDecoderWrapper{userservicerp.JSONDecoder{}}
+	userEncoder := userservicerp.UserTypeEncoder{userservicerp.JSONEncoder{}}
+	userDecoder := userservicerp.UserTypeDecoder{userservicerp.JSONTargetDecoder{}}
+	newUserEncoder := userservicerp.NewUserTypeEncoder{userservicerp.JSONEncoder{}}
+	newUserDecoder := userservicerp.NewUserTypeDecoder{userservicerp.JSONTargetDecoder{}}
 
-	createService := userservicerp.ServeCreateMethod(impl, encoder, decoder)
+	createService := userservicerp.ServeCreateMethod(impl, userEncoder, newUserDecoder)
 	createServiceHandler := userservicerp.NewCreateServer(createService, nil, header)
 
 	server := httptest.NewServer(createServiceHandler)
@@ -53,7 +46,7 @@ func TestRpkitGeneratedUserServer(t *testing.T) {
 		tests.Failed("Should have received test server with a valid URL")
 	}
 
-	client, err := userservicerp.NewCreateMethodClient(server.URL, httpClient, clientEncoder, clientDecoder)
+	client, err := userservicerp.NewCreateMethodClient(server.URL, httpClient, newUserEncoder, userDecoder)
 	if err != nil {
 		tests.FailedWithError(err, "Should have successfully created CreateMethod client")
 	}

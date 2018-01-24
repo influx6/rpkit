@@ -114,13 +114,23 @@ func (JSONEncoder) Encode(w io.Writer, payload interface{}) error {
 	return json.NewEncoder(w).Encode(payload)
 }
 
-// JSONMapDecoder implements a wrapper over the encoding/json JSONEncoder to
+// JSONDecoder implements a wrapper over the encoding/json JSONEncoder to
 // all incoming data into a interface{} type.
-type JSONMapDecoder struct{}
+type JSONDecoder struct{}
 
 // Encode implements the necessary logic to use json for encoding.
-func (JSONMapDecoder) Decode(r io.Reader) (interface{}, error) {
+func (JSONDecoder) Decode(r io.Reader) (interface{}, error) {
 	var data interface{}
 	err := json.NewDecoder(r).Decode(&data)
 	return data, err
+}
+
+// JSONTargetDecoder implements a wrapper over the encoding/json JSONEncoder to
+// all incoming data into a interface{} type.
+type JSONTargetDecoder struct{}
+
+// Encode implements the necessary logic to use json for encoding to provided
+// target of type interface{}.
+func (JSONTargetDecoder) Decode(r io.Reader, data interface{}) error {
+	return json.NewDecoder(r).Decode(data)
 }
