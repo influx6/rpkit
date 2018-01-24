@@ -63,4 +63,8 @@ type Users interface {
 }
 ```
 
+## Important Rules
+
+1. RPKit exposes a simple code generator using go's internal ast Package, but has specific requirements in the way it works with internal go package imports. Please always maintain the name the internal go package, that if your code uses the `context` package, then using the import alias `gctx "context"` will cause reference errors, as rpkit does not resolve this during it's code generation.
+Aliasing can be done for external packages used by your code but not for internal Go packages.
 

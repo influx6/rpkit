@@ -6,7 +6,7 @@ import (
 	"errors"
 	"io"
 
-	{{quote .Pkg.Path}}
+	{{if .UsesInternal}}{{quote .Pkg.Path}}{{end}}
 	{{range $path, $name := .Imports}}
 	{{$name}} {{quote $path}}
 	{{end}}

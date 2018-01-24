@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"net/url"
 
-	{{quote .Pkg.Path}}
+	{{if .UsesInternal}}{{quote .Pkg.Path}}{{end}}
 	{{range $path, $name := .Imports}}
 	{{$name}} {{quote $path}}
 	{{end}}
@@ -301,6 +301,12 @@ type Hook interface {
 	RequestReceived(context.Context)
 	RequestProcessed(context.Context)
 }
+
+// HTTPClient defines an interface which is used as the processor for a
+// raw http request.
+type HTTPClient interface {
+	Do(*http.Request) (*http.Response, error)
+}
 {{range $_, $method := .NoArgAndReturns}}
 //****************************************************************************
 // RP: No Arguments and No Return Methods
@@ -357,14 +363,14 @@ type {{$method.Name}}ClientContract interface {
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client *http.Client) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient) ({{$method.Name}}ClientContract, error) {
 	return New{{$method.Name}}MethodContractClient(addr, client, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
 // will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
 // perform action as specified by contract.
-func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodContractClient(addr string, client HTTPClient, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
@@ -380,7 +386,7 @@ func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, a
 
 type impl{{$method.Name}}Client struct {
 	rootURL *url.URL
-	client *http.Client
+	client HTTPClient
 	actor ActWithRequest
 	resval ResponseValidation
 }
@@ -716,14 +722,14 @@ type {{$method.Name}}ClientContract interface {
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client *http.Client) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient) ({{$method.Name}}ClientContract, error) {
 	return New{{$method.Name}}MethodContractClient(addr, client, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
 // will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
 // perform action as specified by contract.
-func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodContractClient(addr string, client HTTPClient, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
@@ -739,7 +745,7 @@ func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, a
 
 type impl{{$method.Name}}Client struct {
 	rootURL *url.URL
-	client *http.Client
+	client HTTPClient
 	actor ActWithRequest
 	resval ResponseValidation
 }
@@ -1093,14 +1099,14 @@ type {{$method.Name}}ClientDecoder interface{
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
 	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
 // will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
 // perform action as specified by contract.
-func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodContractClient(addr string, client HTTPClient, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
@@ -1117,7 +1123,7 @@ func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, d
 
 type impl{{$method.Name}}Client struct {
 	rootURL *url.URL
-	client *http.Client
+	client HTTPClient
 	actor ActWithRequest
 	resval ResponseValidation
 	decoder {{$method.Name}}ClientDecoder
@@ -1477,14 +1483,14 @@ type {{$method.Name}}ClientDecoder interface{
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
 	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
 // will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
 // perform action as specified by contract.
-func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodContractClient(addr string, client HTTPClient, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
@@ -1501,7 +1507,7 @@ func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, d
 
 type impl{{$method.Name}}Client struct {
 	rootURL *url.URL
-	client *http.Client
+	client HTTPClient
 	actor ActWithRequest
 	resval ResponseValidation
 	decoder {{$method.Name}}ClientDecoder
@@ -1866,14 +1872,14 @@ type {{$method.Name}}ClientContract interface {
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientEncoder) ({{$method.Name}}ClientContract, error) {
 	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
 // will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
 // perform action as specified by contract.
-func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodContractClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientEncoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
@@ -1890,7 +1896,7 @@ func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, e
 
 type impl{{$method.Name}}Client struct {
 	rootURL *url.URL
-	client *http.Client
+	client HTTPClient
 	actor ActWithRequest
 	resval ResponseValidation
 	encoder {{$method.Name}}ClientEncoder
@@ -2266,14 +2272,14 @@ type {{$method.Name}}ClientContract interface {
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
 	return New{{$method.Name}}MethodContractClient(addr, client, encoder, decoder, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
 // will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
 // perform action as specified by contract.
-func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodContractClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
@@ -2291,7 +2297,7 @@ func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, e
 
 type impl{{$method.Name}}Client struct {
 	rootURL *url.URL
-	client *http.Client
+	client HTTPClient
 	actor ActWithRequest
 	resval ResponseValidation
 	encoder {{$method.Name}}ClientEncoder
@@ -2682,14 +2688,14 @@ type {{$method.Name}}ClientContract interface {
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
 	return New{{$method.Name}}MethodContractClient(addr, client, encoder, decoder, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
 // will make it's call to provided address with the provided http.Client to a {{$method.Name}}Server to
 // perform action as specified by contract.
-func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
+func New{{$method.Name}}MethodContractClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientEncoder, decoder {{$method.Name}}ClientDecoder, act ActWithRequest, resv ResponseValidation) ({{$method.Name}}ClientContract, error) {
 	root, err := parseURL(addr)
 	if err != nil {
 		return nil, err
@@ -2707,7 +2713,7 @@ func New{{$method.Name}}MethodContractClient(addr string, client *http.Client, e
 
 type impl{{$method.Name}}Client struct {
 	rootURL *url.URL
-	client *http.Client
+	client HTTPClient
 	actor ActWithRequest
 	resval ResponseValidation
 	encoder {{$method.Name}}ClientEncoder
@@ -3086,16 +3092,20 @@ func joinURL(root *url.URL, addr string) (*url.URL, error) {
 // skipRedirects copies giving http.Client and fix issue with possible redirects
 // in go1.8 when a post receives a status code which is undesired. Such has 302, 303,
 // and 301s.
-func skipRedirects(in *http.Client) *http.Client {
-	copy := *in
-	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if in.CheckRedirect != nil {
-			err := in.CheckRedirect(req, via)
-			_ = err // to fix issue with warning about not checking error.
+func skipRedirects(in HTTPClient) HTTPClient {
+	if rin, ok := in.(*http.Client); ok {
+		former := rin.CheckRedirect
+		copy := *rin
+		copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			if former != nil {
+				err := former(req, via)
+				_ = err // to fix issue with warning about not checking error.
+			}
+			return http.ErrUseLastResponse
 		}
-		return http.ErrUseLastResponse
+		return &copy
 	}
-	return &copy
+	return in
 }
 
 func loadJSONError(r io.Reader) (jsonErrorResponse, error) {

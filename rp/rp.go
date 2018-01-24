@@ -23,6 +23,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 	sections := strings.Split(strings.TrimSuffix(declr.Path, "/"), "/")
 	sections = sections[1:]
 
+	var usesInternalPackage bool
 	var noArgNoReturnMethods,
 		onlyErrorMethods,
 		outputWithNoErrorMethods,
@@ -31,7 +32,25 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 		inputWithOutputOnlyMethods,
 		inputWithOutputWithErrorMethods []ast.FunctionDefinition
 
+	packagePrefix := fmt.Sprintf("%s.", declr.Package)
+
 	methods := in.Methods(&declr)
+methodLoop:
+	for _, method := range methods {
+		for _, arg := range method.Args {
+			if strings.HasPrefix(arg.ExType, packagePrefix) {
+				usesInternalPackage = true
+				break methodLoop
+			}
+		}
+		for _, arg := range method.Returns {
+			if strings.HasPrefix(arg.ExType, packagePrefix) {
+				usesInternalPackage = true
+				break methodLoop
+			}
+		}
+	}
+
 	imports := in.GetImports(&declr, false)
 	for _, method := range methods {
 		if !method.HasReturns() && !method.HasArgs() {
@@ -151,6 +170,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					ServiceName                    string
 					TargetPackage                  string
 					ImplPackageName                string
+					UsesInternal                   bool
 					Imports                        map[string]string
 					An                             ast.AnnotationDeclaration
 					Itr                            ast.InterfaceDeclaration
@@ -170,6 +190,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					ImplPackageName:                packageName,
 					TargetPackage:                  packagePath,
 					OnlyErrorMethods:               onlyErrorMethods,
+					UsesInternal:                   usesInternalPackage,
 					NoArgAndReturns:                noArgNoReturnMethods,
 					OutputWithNoErrorMethods:       outputWithNoErrorMethods,
 					OutputWithErrorMethods:         outputWithErrorMethods,
@@ -194,6 +215,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					ServiceName                    string
 					TargetPackage                  string
 					ImplPackageName                string
+					UsesInternal                   bool
 					Imports                        map[string]string
 					An                             ast.AnnotationDeclaration
 					Itr                            ast.InterfaceDeclaration
@@ -213,6 +235,7 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 					ImplPackageName:                packageName,
 					TargetPackage:                  packagePath,
 					OnlyErrorMethods:               onlyErrorMethods,
+					UsesInternal:                   usesInternalPackage,
 					NoArgAndReturns:                noArgNoReturnMethods,
 					OutputWithNoErrorMethods:       outputWithNoErrorMethods,
 					OutputWithErrorMethods:         outputWithErrorMethods,
