@@ -47,6 +47,30 @@ type TargetDecoder interface{
 // Used By: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}
 //****************************************************************************
 
+// {{getTypeName $name}}TargetEncoder implements a encoder for the {{$name}} type
+// using a provided function.
+type {{getTypeName $name}}TargetEncoder struct {
+	EncoderFunc func(io.Writer, {{$name}}) error
+}
+
+// Encode implements the encoding function for type {{$name}} used in {{$ServiceName}} by
+// calling the underline encoding function to handle the work.
+func (td {{getTypeName $name}}TargetEncoder) Encode(w io.Writer, payload {{ $name }}) error {
+	return td.EncoderFunc(w, payload)
+}
+
+// {{getTypeName $name}}TargetDecoder implements a decoder for the {{$name}} type
+// using a provided function.
+type {{getTypeName $name}}TargetDecoder struct {
+	DecoderFunc func(io.Reader) ({{$name}}, error)
+}
+
+// Decode implements the decoding function for type {{$name}} used in {{$ServiceName}} by
+// calling the underline decoding function to handle the work.
+func (td {{getTypeName $name}}TargetDecoder) Decode(r io.Reader) ({{ $name }}, error) {
+	return td.DecoderFunc(r)
+}
+
 // {{getTypeName $name}}TypeEncoder implements a encoder for the {{$name}} type.
 type {{getTypeName $name}}TypeEncoder struct {
 	Encoder Encoder
@@ -57,6 +81,7 @@ type {{getTypeName $name}}TypeEncoder struct {
 func (en {{getTypeName $name}}TypeEncoder) Encode(w io.Writer, payload {{ $name }}) error {
 	return en.Encoder.Encode(w, payload)
 }
+
 {{if $arg.StructObject }}
 // {{getTypeName $name}}TypeDecoder implements a decoder for the {{$name}} type.
 type {{getTypeName $name}}TypeDecoder struct {
