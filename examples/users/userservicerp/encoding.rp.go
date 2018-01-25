@@ -40,7 +40,7 @@ type TargetDecoder interface {
 }
 
 //****************************************************************************
-// users.NewUser Encoders / Decoders Implementations
+// users.NewUser Target Function Encoders / Decoders Implementations
 // Source: github.com/gokit/rpkit/examples/users
 // Used By: users.UserService
 //****************************************************************************
@@ -69,6 +69,12 @@ func (td NewUserTargetDecoder) Decode(r io.Reader) (users.NewUser, error) {
 	return td.DecoderFunc(r)
 }
 
+//****************************************************************************
+// users.NewUser Type Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
+//****************************************************************************
+
 // NewUserTypeEncoder implements a encoder for the users.NewUser type.
 type NewUserTypeEncoder struct {
 	Encoder Encoder
@@ -94,7 +100,7 @@ func (td NewUserTypeDecoder) Decode(r io.Reader) (users.NewUser, error) {
 }
 
 //****************************************************************************
-// users.User Encoders / Decoders Implementations
+// users.User Target Function Encoders / Decoders Implementations
 // Source: github.com/gokit/rpkit/examples/users
 // Used By: users.UserService
 //****************************************************************************
@@ -123,6 +129,12 @@ func (td UserTargetDecoder) Decode(r io.Reader) (users.User, error) {
 	return td.DecoderFunc(r)
 }
 
+//****************************************************************************
+// users.User Type Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
+//****************************************************************************
+
 // UserTypeEncoder implements a encoder for the users.User type.
 type UserTypeEncoder struct {
 	Encoder Encoder
@@ -148,7 +160,7 @@ func (td UserTypeDecoder) Decode(r io.Reader) (users.User, error) {
 }
 
 //****************************************************************************
-// Base Encoders / Decoders Implementations
+// JSON Encoders / Decoders Implementations
 // Source: github.com/gokit/rpkit/examples/users
 //****************************************************************************
 
