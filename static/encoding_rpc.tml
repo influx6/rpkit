@@ -42,7 +42,7 @@ type TargetDecoder interface{
 
 {{range $name, $arg := .EncodingArgs}}
 //****************************************************************************
-// {{$name}} Encoders / Decoders Implementations
+// {{$name}} Target Function Encoders / Decoders Implementations
 // Source: {{$Itr.Path}}
 // Used By: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}
 //****************************************************************************
@@ -70,6 +70,12 @@ type {{getTypeName $name}}TargetDecoder struct {
 func (td {{getTypeName $name}}TargetDecoder) Decode(r io.Reader) ({{ $name }}, error) {
 	return td.DecoderFunc(r)
 }
+
+//****************************************************************************
+// {{$name}} Type Encoders / Decoders Implementations
+// Source: {{$Itr.Path}}
+// Used By: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}
+//****************************************************************************
 
 // {{getTypeName $name}}TypeEncoder implements a encoder for the {{$name}} type.
 type {{getTypeName $name}}TypeEncoder struct {
@@ -120,7 +126,7 @@ func (td {{getTypeName $name}}TypeDecoder) Decode(r io.Reader) ({{ $name }}, err
 {{end}}
 
 //****************************************************************************
-// Base Encoders / Decoders Implementations
+// JSON Encoders / Decoders Implementations
 // Source: {{$Itr.Path}}
 //****************************************************************************
 
