@@ -1,0 +1,14 @@
+language: go
+
+go:
+  - 1.9
+
+before_script:
+after_script:
+script:
+
+jobs:
+ include:
+  - stage: test
+    script: go test -v ./internal/tests/...
+

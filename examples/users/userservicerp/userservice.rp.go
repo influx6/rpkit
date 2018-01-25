@@ -315,6 +315,8 @@ type Hook interface {
 	RequestAccepted(context.Context)
 	RequestReceived(context.Context)
 	RequestProcessed(context.Context)
+	RequestError(context.Context, error)
+	RequestPanic(context.Context, interface{})
 }
 
 // HTTPClient defines an interface which is used as the processor for a
@@ -591,6 +593,12 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/users")
@@ -600,6 +608,10 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		w.Header().Add("X-Package-Interface", "users.UserService")
 
 		w.WriteHeader(http.StatusNoContent)
+
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
 		return
 	}
 
@@ -623,6 +635,10 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype) {
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 					ErrInvalidContentType, map[string]interface{}{
 						"package":     "github.com/gokit/rpkit/examples/users",
@@ -641,10 +657,6 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		impl.hook.RequestAccepted(ctx)
 	}
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
-
 	for key, vals := range impl.headers {
 		for _, item := range vals {
 			w.Header().Add(key, item)
@@ -659,13 +671,15 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.Header().Add("X-API-Route", CreateServiceRoute)
 	w.Header().Add("X-Package-Interface", "users.UserService")
 
-	w.WriteHeader(http.StatusOK)
-
 	var actionErr error
 	func() {
 		defer func() {
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package":     "github.com/gokit/rpkit/examples/users",
 					"api_base":    BaseServiceName,
@@ -686,6 +700,10 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package":     "github.com/gokit/rpkit/examples/users",
 			"api_base":    BaseServiceName,
@@ -696,6 +714,12 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		})
 		return
 	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	w.WriteHeader(http.StatusOK)
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)

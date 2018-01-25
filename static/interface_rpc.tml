@@ -316,6 +316,8 @@ type Hook interface {
 	RequestAccepted(context.Context)
 	RequestReceived(context.Context)
 	RequestProcessed(context.Context)
+	RequestError(context.Context, error)
+	RequestPanic(context.Context, interface{})
 }
 
 // HTTPClient defines an interface which is used as the processor for a
@@ -604,7 +606,13 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			}
 		}
 
-		w.Header().Add("X-Agent", "RPKIT:HTTP")
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+		
+		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
 		w.Header().Add("X-Method", {{quote $method.Name}})
@@ -613,6 +621,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 		w.WriteHeader(http.StatusNoContent)
+		
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
 		return
 	}
 
@@ -636,6 +648,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+			
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
@@ -668,15 +684,16 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
 	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
 
 	var actionErr error
 	func(){
 		defer func(){
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+				
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -697,6 +714,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+		
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -707,8 +728,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
+	
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -995,6 +1020,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			}
 		}
 
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+		
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
@@ -1004,6 +1035,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 		w.WriteHeader(http.StatusNoContent)
+		
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
+
 		return
 	}
 
@@ -1027,6 +1063,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+			
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
@@ -1059,15 +1099,16 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
 	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
 
 	var actionErr error
 	func(){
 		defer func(){
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+				
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -1088,6 +1129,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+		
 		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -1098,7 +1143,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+	
+	w.WriteHeader(http.StatusNoContent)
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
@@ -1416,7 +1466,13 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				w.Header().Add(key, item)
 			}
 		}
-
+		
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+		
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
@@ -1426,6 +1482,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 		w.WriteHeader(http.StatusNoContent)
+		
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
+		
 		return
 	}
 
@@ -1449,6 +1510,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+		
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
@@ -1467,9 +1532,6 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		impl.hook.RequestAccepted(ctx)
 	}
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
 
 	for key, vals := range impl.headers {
 		for _, item := range vals {
@@ -1489,7 +1551,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	func(){
 		defer func(){
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+				
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -1510,6 +1576,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx,actionErr)
+		}
+		
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -1520,8 +1590,13 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
+	
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
 
 	w.WriteHeader(http.StatusOK)
+	
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
 	}
@@ -1835,6 +1910,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			}
 		}
 
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+		
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
@@ -1844,6 +1925,11 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 		w.WriteHeader(http.StatusNoContent)
+		
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
+		
 		return
 	}
 
@@ -1867,6 +1953,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+		
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
@@ -1885,10 +1975,6 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		impl.hook.RequestAccepted(ctx)
 	}
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
-
 	for key, vals := range impl.headers {
 		for _, item := range vals {
 			w.Header().Add(key, item)
@@ -1903,13 +1989,16 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
 	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
-	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
 	func(){
 		defer func(){
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+				
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -1930,6 +2019,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+		
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -1940,7 +2033,13 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
+	
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
 
+	w.WriteHeader(http.StatusOK)
+	
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
 	}
@@ -2253,6 +2352,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			}
 		}
 
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+		
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
@@ -2262,6 +2367,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 		w.WriteHeader(http.StatusNoContent)
+		
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
 		return
 	}
 
@@ -2285,6 +2394,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+		
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
@@ -2303,10 +2416,6 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		impl.hook.RequestAccepted(ctx)
 	}
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
-
 	for key, vals := range impl.headers {
 		for _, item := range vals {
 			w.Header().Add(key, item)
@@ -2321,13 +2430,16 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
 	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
-	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
 	func(){
 		defer func(){
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+				
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -2348,6 +2460,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+	
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -2358,7 +2474,13 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
+	
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
 
+	w.WriteHeader(http.StatusNoContent)
+	
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
 	}
@@ -2700,6 +2822,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			}
 		}
 
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+		
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
@@ -2709,6 +2837,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 		w.WriteHeader(http.StatusNoContent)
+		
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
 		return
 	}
 
@@ -2732,6 +2864,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+				
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
@@ -2750,9 +2886,6 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		impl.hook.RequestAccepted(ctx)
 	}
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
 
 	for key, vals := range impl.headers {
 		for _, item := range vals {
@@ -2768,13 +2901,16 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
 	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
-	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
 	func(){
 		defer func(){
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+				
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -2795,6 +2931,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+	
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -2805,7 +2945,13 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
+	
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
 
+	w.WriteHeader(http.StatusOK)
+	
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
 	}
@@ -3149,6 +3295,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			}
 		}
 
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", {{quote $Itr.Path}})
@@ -3158,6 +3310,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
 		w.WriteHeader(http.StatusNoContent)
+
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
 		return
 	}
 
@@ -3181,6 +3337,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		if accepts := impl.headers.Get("Accept"); accepts != "" {
 			ctype := r.Header.Get("Content-Type")
 			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+
 				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
@@ -3199,9 +3359,6 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		impl.hook.RequestAccepted(ctx)
 	}
 
-	if impl.hook != nil {
-		impl.hook.ResponsePrepared(ctx)
-	}
 
 	for key, vals := range impl.headers {
 		for _, item := range vals {
@@ -3217,13 +3374,16 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	w.Header().Add("X-API-Route", {{$method.Name}}ServiceRoute)
 	w.Header().Add("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
 
-	w.WriteHeader(http.StatusOK)
 
 	var actionErr error
 	func(){
 		defer func(){
 			if rerr := recover(); rerr != nil {
-				derr := fmt.Errorf("panic err: %+q", rerr)
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+
+				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -3244,6 +3404,10 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 	}()
 
 	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+
 		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
@@ -3254,6 +3418,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		})
 		return
 	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	w.WriteHeader(http.StatusOK)
 
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)

@@ -1,6 +1,8 @@
 RPKit
 --------
 [![Go Report Card](https://goreportcard.com/badge/github.com/gokit/rpkit)](https://goreportcard.com/report/github.com/gokit/rpkit)
+[![Travis Build Status](https://travis-ci.org/gokit/rpkit.svg?branch=master)](https://travis-ci.org/gokit/rpkit#)
+[![CircleCI](https://circleci.com/gh/gokit/rpkit.svg?style=svg)](https://circleci.com/gh/gokit/rpkit)
 
 RPkit implements a code generator which automatically generates a RPC-style API package, which exposes methods of an interface as both http.Handlers with associated client code that directly make requests to such to perform action of said methods.
 
