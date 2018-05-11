@@ -26,8 +26,24 @@
 
 
 [[constraint]]
+  name = "github.com/PuerkitoBio/goquery"
+  version = "1.4.0"
+
+[[constraint]]
+  name = "github.com/aymerick/douceur"
+  version = "0.2.0"
+
+[[constraint]]
   branch = "master"
   name = "github.com/influx6/faux"
+
+[[constraint]]
+  name = "github.com/russross/blackfriday"
+  version = "2.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
 
 [prune]
   go-tests = true

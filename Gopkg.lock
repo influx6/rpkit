@@ -23,20 +23,30 @@
   version = "v1.6.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/gokit/assetkit"
+  packages = [
+    "assets",
+    "assets/packers",
+    "generators/data"
+  ]
+  revision = "d96ae7ebd775a4337440550c32b98dc38c0d6fd8"
+
+[[projects]]
   name = "github.com/gorilla/css"
   packages = ["scanner"]
   revision = "398b0b046082ecb3694c01bec6b336a06a4e530a"
   version = "v1.0.0"
 
 [[projects]]
-  name = "github.com/gu-io/gu"
+  branch = "master"
+  name = "github.com/gu-io/trees"
   packages = [
-    "common",
-    "trees",
-    "trees/css"
+    ".",
+    "css",
+    "notifications"
   ]
-  revision = "41316cfb694febb3ebebe8e3e68d0c8121744f65"
-  version = "v2.0.3"
+  revision = "6f9db5d968e206f46540b644431da5bf22e4a035"
 
 [[projects]]
   branch = "master"
@@ -51,7 +61,6 @@
     "bag",
     "exec",
     "flags",
-    "fmtwriter",
     "hexwriter",
     "metrics",
     "metrics/custom",
@@ -81,16 +90,6 @@
     "utils"
   ]
   revision = "f56c8a0aadacb9214374dd1b9ee38d9015c2f8fe"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/influx6/trail"
-  packages = [
-    "assets",
-    "assets/packers",
-    "generators/data"
-  ]
-  revision = "0026735e18c21e092fd7e8cb2016337ecf75c520"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -134,6 +133,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2b7189a723fc198f17bb0b84a69365ac7f5bdba1b10ec22715a79ff91330495a"
+  inputs-digest = "4b02da76a03619e62e0e8fb1bc363e401cf3b430efbf85099f82b38cfff55067"
   solver-name = "gps-cdcl"
   solver-version = 1
