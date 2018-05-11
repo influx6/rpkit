@@ -18,10 +18,10 @@ func main() {
 		ShortDesc: "Generates a rpc like API for interface types.",
 		Desc:      "Generates a rpc API from provided interfaces to create services with.",
 		Action: func(ctx flags.Context) error {
-			force, _ := ctx.GetBool("force")
-			dest, _ := ctx.GetString("dest")
-			target, _ := ctx.GetString("target")
-			verbose, _ := ctx.GetBool("verbose")
+			force := ctx.GetBool("force")
+			dest := ctx.GetString("dest")
+			target := ctx.GetString("target")
+			verbose := ctx.GetBool("verbose")
 
 			logs := metrics.New()
 

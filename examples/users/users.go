@@ -14,5 +14,7 @@ type User struct {
 //@rp
 //@implement
 type UserService interface {
+	Get(context.Context) (int, error)
 	Create(context.Context, NewUser) (User, error)
+	GetBy(context.Context, string) (int, error)
 }

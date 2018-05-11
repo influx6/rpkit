@@ -2,13 +2,14 @@ package userservicerp
 
 // All code below are auto-generated and should not be edited by hand.
 // See https://github.com/gokit/rpkit for more info.
-
+  
 import (
 	"encoding/json"
 	"errors"
 	"io"
 
 	"github.com/gokit/rpkit/examples/users"
+	
 )
 
 // errors ...
@@ -23,21 +24,162 @@ var (
 
 // Encoder defines an interface representing a generic encoder which
 // expects a interface{} type has it's encoding target.
-type Encoder interface {
+type Encoder interface{
 	Encode(io.Writer, interface{}) error
 }
 
 // Decoder defines an interface representing a generic decoder which
 // returning a interface{} type has it's response.
-type Decoder interface {
+type Decoder interface{
 	Decode(io.Reader) (interface{}, error)
 }
 
 // TargetDecoder defines an interface representing a target decoder which
 // expects a type to decode into.
-type TargetDecoder interface {
+type TargetDecoder interface{
 	Decode(io.Reader, interface{}) error
 }
+
+
+//****************************************************************************
+// int Target Function Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
+//****************************************************************************
+
+// IntTargetEncoder implements a encoder for the int type
+// using a provided function.
+type IntTargetEncoder struct {
+	EncoderFunc func(io.Writer, int) error
+}
+
+// Encode implements the encoding function for type int used in users by
+// calling the underline encoding function to handle the work.
+func (td IntTargetEncoder) Encode(w io.Writer, payload int) error {
+	return td.EncoderFunc(w, payload)
+}
+
+// IntTargetDecoder implements a decoder for the int type
+// using a provided function.
+type IntTargetDecoder struct {
+	DecoderFunc func(io.Reader) (int, error)
+}
+
+// Decode implements the decoding function for type int used in users by
+// calling the underline decoding function to handle the work.
+func (td IntTargetDecoder) Decode(r io.Reader) (int, error) {
+	return td.DecoderFunc(r)
+}
+
+//****************************************************************************
+// int Type Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
+//****************************************************************************
+
+// IntTypeEncoder implements a encoder for the int type.
+type IntTypeEncoder struct {
+	Encoder Encoder
+}
+
+// Encode implements the encode function for type int used in users by
+// calling the underline Encoder to handle the work.
+func (en IntTypeEncoder) Encode(w io.Writer, payload int) error {
+	return en.Encoder.Encode(w, payload)
+}
+
+
+// IntTypeDecoder implements a decoder for the int type.
+type IntTypeDecoder struct {
+	Decoder Decoder
+}
+
+// Decode implements the decode function for type int used in users by
+// calling the underline Decoder to handle the work.
+func (td IntTypeDecoder) Decode(r io.Reader) (int, error) {
+	recs, err := td.Decoder.Decode(r)
+	if err != nil {
+		return recs.(int), err
+	}
+
+	// Type convert, so we have the right type, which is int.
+	if erecs, ok := recs.(int); ok {
+		return erecs, nil
+	}
+
+    return recs.(int), ErrDecodedUnknownType
+}
+
+
+//****************************************************************************
+// string Target Function Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
+//****************************************************************************
+
+// StringTargetEncoder implements a encoder for the string type
+// using a provided function.
+type StringTargetEncoder struct {
+	EncoderFunc func(io.Writer, string) error
+}
+
+// Encode implements the encoding function for type string used in users by
+// calling the underline encoding function to handle the work.
+func (td StringTargetEncoder) Encode(w io.Writer, payload string) error {
+	return td.EncoderFunc(w, payload)
+}
+
+// StringTargetDecoder implements a decoder for the string type
+// using a provided function.
+type StringTargetDecoder struct {
+	DecoderFunc func(io.Reader) (string, error)
+}
+
+// Decode implements the decoding function for type string used in users by
+// calling the underline decoding function to handle the work.
+func (td StringTargetDecoder) Decode(r io.Reader) (string, error) {
+	return td.DecoderFunc(r)
+}
+
+//****************************************************************************
+// string Type Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
+//****************************************************************************
+
+// StringTypeEncoder implements a encoder for the string type.
+type StringTypeEncoder struct {
+	Encoder Encoder
+}
+
+// Encode implements the encode function for type string used in users by
+// calling the underline Encoder to handle the work.
+func (en StringTypeEncoder) Encode(w io.Writer, payload string) error {
+	return en.Encoder.Encode(w, payload)
+}
+
+
+// StringTypeDecoder implements a decoder for the string type.
+type StringTypeDecoder struct {
+	Decoder Decoder
+}
+
+// Decode implements the decode function for type string used in users by
+// calling the underline Decoder to handle the work.
+func (td StringTypeDecoder) Decode(r io.Reader) (string, error) {
+	recs, err := td.Decoder.Decode(r)
+	if err != nil {
+		return recs.(string), err
+	}
+
+	// Type convert, so we have the right type, which is string.
+	if erecs, ok := recs.(string); ok {
+		return erecs, nil
+	}
+
+    return recs.(string), ErrDecodedUnknownType
+}
+
 
 //****************************************************************************
 // users.NewUser Target Function Encoders / Decoders Implementations
@@ -51,7 +193,7 @@ type NewUserTargetEncoder struct {
 	EncoderFunc func(io.Writer, users.NewUser) error
 }
 
-// Encode implements the encoding function for type users.NewUser used in gokit.rpkit.examples.users by
+// Encode implements the encoding function for type users.NewUser used in users by
 // calling the underline encoding function to handle the work.
 func (td NewUserTargetEncoder) Encode(w io.Writer, payload users.NewUser) error {
 	return td.EncoderFunc(w, payload)
@@ -63,7 +205,7 @@ type NewUserTargetDecoder struct {
 	DecoderFunc func(io.Reader) (users.NewUser, error)
 }
 
-// Decode implements the decoding function for type users.NewUser used in gokit.rpkit.examples.users by
+// Decode implements the decoding function for type users.NewUser used in users by
 // calling the underline decoding function to handle the work.
 func (td NewUserTargetDecoder) Decode(r io.Reader) (users.NewUser, error) {
 	return td.DecoderFunc(r)
@@ -80,24 +222,26 @@ type NewUserTypeEncoder struct {
 	Encoder Encoder
 }
 
-// Encode implements the encode function for type users.NewUser used in gokit.rpkit.examples.users by
+// Encode implements the encode function for type users.NewUser used in users by
 // calling the underline Encoder to handle the work.
 func (en NewUserTypeEncoder) Encode(w io.Writer, payload users.NewUser) error {
 	return en.Encoder.Encode(w, payload)
 }
+
 
 // NewUserTypeDecoder implements a decoder for the users.NewUser type.
 type NewUserTypeDecoder struct {
 	Decoder TargetDecoder
 }
 
-// Decode implements the decode function for type users.NewUser used in gokit.rpkit.examples.users by
+// Decode implements the decode function for type users.NewUser used in users by
 // calling the underline Decoder to handle the work.
-func (td NewUserTypeDecoder) Decode(r io.Reader) (users.NewUser, error) {
+func (td NewUserTypeDecoder) Decode(r io.Reader) (users.NewUser, error) {  
 	var res users.NewUser
 	err := td.Decoder.Decode(r, &res)
 	return res, err
 }
+
 
 //****************************************************************************
 // users.User Target Function Encoders / Decoders Implementations
@@ -111,7 +255,7 @@ type UserTargetEncoder struct {
 	EncoderFunc func(io.Writer, users.User) error
 }
 
-// Encode implements the encoding function for type users.User used in gokit.rpkit.examples.users by
+// Encode implements the encoding function for type users.User used in users by
 // calling the underline encoding function to handle the work.
 func (td UserTargetEncoder) Encode(w io.Writer, payload users.User) error {
 	return td.EncoderFunc(w, payload)
@@ -123,7 +267,7 @@ type UserTargetDecoder struct {
 	DecoderFunc func(io.Reader) (users.User, error)
 }
 
-// Decode implements the decoding function for type users.User used in gokit.rpkit.examples.users by
+// Decode implements the decoding function for type users.User used in users by
 // calling the underline decoding function to handle the work.
 func (td UserTargetDecoder) Decode(r io.Reader) (users.User, error) {
 	return td.DecoderFunc(r)
@@ -140,24 +284,27 @@ type UserTypeEncoder struct {
 	Encoder Encoder
 }
 
-// Encode implements the encode function for type users.User used in gokit.rpkit.examples.users by
+// Encode implements the encode function for type users.User used in users by
 // calling the underline Encoder to handle the work.
 func (en UserTypeEncoder) Encode(w io.Writer, payload users.User) error {
 	return en.Encoder.Encode(w, payload)
 }
+
 
 // UserTypeDecoder implements a decoder for the users.User type.
 type UserTypeDecoder struct {
 	Decoder TargetDecoder
 }
 
-// Decode implements the decode function for type users.User used in gokit.rpkit.examples.users by
+// Decode implements the decode function for type users.User used in users by
 // calling the underline Decoder to handle the work.
-func (td UserTypeDecoder) Decode(r io.Reader) (users.User, error) {
+func (td UserTypeDecoder) Decode(r io.Reader) (users.User, error) {  
 	var res users.User
 	err := td.Decoder.Decode(r, &res)
 	return res, err
 }
+
+
 
 //****************************************************************************
 // JSON Encoders / Decoders Implementations

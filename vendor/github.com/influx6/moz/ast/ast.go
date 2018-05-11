@@ -95,7 +95,7 @@ func (pkgs Packages) TestPackageForFile(path string, targetFile string) (Package
 		return PackageDeclaration{}, Package{}, ok
 	}
 
-	plDeclr, ok := pl.DeclarationFor(path, targetFile)
+	plDeclr, ok := pl.DeclarationFor(targetFile)
 	return plDeclr, pl, ok
 }
 
@@ -106,7 +106,7 @@ func (pkgs Packages) PackageForFile(path string, targetFile string) (PackageDecl
 		return PackageDeclaration{}, Package{}, ok
 	}
 
-	plDeclr, ok := pl.DeclarationFor(path, targetFile)
+	plDeclr, ok := pl.DeclarationFor(targetFile)
 	return plDeclr, pl, ok
 }
 
@@ -239,7 +239,6 @@ func (pkg Package) ImportFor(imp string) (ImportDeclaration, error) {
 // FunctionsFor returns a slice of FuncDeclaration for the giving object.
 func (pkg Package) FunctionsFor(obj *ast.Object) []FuncDeclaration {
 	var funcs []FuncDeclaration
-
 	for _, elem := range pkg.Packages {
 		funcs = append(funcs, elem.FunctionsFor(obj)...)
 	}
@@ -247,49 +246,10 @@ func (pkg Package) FunctionsFor(obj *ast.Object) []FuncDeclaration {
 	return funcs
 }
 
-// TestDeclarations returns the associated test declaration for the giving import path.
-func (pkg Package) TestDeclarations(importPath string) []PackageDeclaration {
-	var declrs []PackageDeclaration
-
-	for _, declr := range pkg.TestPackages {
-		if declr.Path == importPath {
-			declrs = append(declrs, declr)
-		}
-	}
-
-	return declrs
-}
-
-// Declarations returns the associated declaration for the giving import path.
-func (pkg Package) Declarations(importPath string) []PackageDeclaration {
-	var declrs []PackageDeclaration
-
-	for _, declr := range pkg.Packages {
-		if declr.Path == importPath {
-			declrs = append(declrs, declr)
-		}
-	}
-
-	return declrs
-}
-
-// TestDeclarationFor returns the associated test declaration for the giving file path.
-func (pkg Package) TestDeclarationFor(importPath string, targetFile string) (PackageDeclaration, bool) {
-	declrs := pkg.TestDeclarations(importPath)
-	for _, declr := range declrs {
-		if declr.File == targetFile {
-			return declr, true
-		}
-	}
-
-	return PackageDeclaration{}, false
-}
-
 // DeclarationFor returns the associated declaration for the giving file path.
-func (pkg Package) DeclarationFor(importPath string, targetFile string) (PackageDeclaration, bool) {
-	declrs := pkg.Declarations(importPath)
-	for _, declr := range declrs {
-		if declr.File == targetFile {
+func (pkg Package) DeclarationFor(targetFile string) (PackageDeclaration, bool) {
+	for _, declr := range pkg.Packages {
+		if declr.FilePath == targetFile || declr.File == targetFile {
 			return declr, true
 		}
 	}
@@ -298,8 +258,8 @@ func (pkg Package) DeclarationFor(importPath string, targetFile string) (Package
 }
 
 // TypeFor returns associated TypeDeclaration for importPath in file with the typeName.
-func (pkg Package) TypeFor(importPath string, typeName string) (TypeDeclaration, bool) {
-	for _, declr := range pkg.Declarations(importPath) {
+func (pkg Package) TypeFor(typeName string) (TypeDeclaration, bool) {
+	for _, declr := range pkg.Packages {
 		for _, elem := range declr.Types {
 			if elem.Object.Name.Name == typeName {
 				return elem, true
@@ -311,8 +271,8 @@ func (pkg Package) TypeFor(importPath string, typeName string) (TypeDeclaration,
 }
 
 // FunctionFor returns associated FuncDeclaration for importPath in file with the typeName.
-func (pkg Package) FunctionFor(importPath string, typeName string) (FuncDeclaration, bool) {
-	for _, declr := range pkg.Declarations(importPath) {
+func (pkg Package) FunctionFor(typeName string) (FuncDeclaration, bool) {
+	for _, declr := range pkg.Packages {
 		for _, elem := range declr.Functions {
 			if elem.FuncDeclr.Name.Name == typeName {
 				return elem, true
@@ -324,8 +284,8 @@ func (pkg Package) FunctionFor(importPath string, typeName string) (FuncDeclarat
 }
 
 // StructFor returns associated StructDeclaration for importPath in file with the typeName.
-func (pkg Package) StructFor(importPath string, typeName string) (StructDeclaration, bool) {
-	for _, declr := range pkg.Declarations(importPath) {
+func (pkg Package) StructFor(typeName string) (StructDeclaration, bool) {
+	for _, declr := range pkg.Packages {
 		for _, elem := range declr.Structs {
 			if elem.Object.Name.Name == typeName {
 				return elem, true
@@ -337,8 +297,8 @@ func (pkg Package) StructFor(importPath string, typeName string) (StructDeclarat
 }
 
 // InterfaceFor returns associated InterfaceDeclaration for importPath in file with the typeName.
-func (pkg Package) InterfaceFor(importPath string, typeName string) (InterfaceDeclaration, bool) {
-	for _, declr := range pkg.Declarations(importPath) {
+func (pkg Package) InterfaceFor(typeName string) (InterfaceDeclaration, bool) {
+	for _, declr := range pkg.Packages {
 		for _, elem := range declr.Interfaces {
 			if elem.Object.Name.Name == typeName {
 				return elem, true
@@ -347,46 +307,6 @@ func (pkg Package) InterfaceFor(importPath string, typeName string) (InterfaceDe
 	}
 
 	return InterfaceDeclaration{}, false
-}
-
-// TypeForFile returns associated TypeDeclaration for importPath in file with the typeName.
-func (pkg Package) TypeForFile(importPath string, targetFile string, typeName string) (TypeDeclaration, bool) {
-	declr, ok := pkg.DeclarationFor(importPath, targetFile)
-	if !ok {
-		return TypeDeclaration{}, false
-	}
-
-	return declr.TypeFor(typeName)
-}
-
-// FunctionForFile returns associated FuncDeclaration for importPath in file with the typeName.
-func (pkg Package) FunctionForFile(importPath string, targetFile string, typeName string) (FuncDeclaration, bool) {
-	declr, ok := pkg.DeclarationFor(importPath, targetFile)
-	if !ok {
-		return FuncDeclaration{}, false
-	}
-
-	return declr.FunctionFor(typeName)
-}
-
-// StructForFile returns associated StructDeclaration for importPath in file with the typeName.
-func (pkg Package) StructForFile(importPath string, targetFile string, typeName string) (StructDeclaration, bool) {
-	declr, ok := pkg.DeclarationFor(importPath, targetFile)
-	if !ok {
-		return StructDeclaration{}, false
-	}
-
-	return declr.StructFor(typeName)
-}
-
-// InterfaceForFile returns associated InterfaceDeclaration for importPath in file with the typeName.
-func (pkg Package) InterfaceForFile(importPath string, targetFile string, typeName string) (InterfaceDeclaration, bool) {
-	declr, ok := pkg.DeclarationFor(importPath, targetFile)
-	if !ok {
-		return InterfaceDeclaration{}, false
-	}
-
-	return declr.InterfaceFor(typeName)
 }
 
 //===========================================================================================================
@@ -402,6 +322,7 @@ type PackageDeclaration struct {
 	Source           string
 	Comments         []string
 	Imports          map[string]ImportDeclaration
+	ImportedPackages map[string]Package
 	Annotations      []AnnotationDeclaration
 	Types            []TypeDeclaration
 	Structs          []StructDeclaration
@@ -409,7 +330,6 @@ type PackageDeclaration struct {
 	Functions        []FuncDeclaration
 	Variables        []VariableDeclaration
 	ObjectFunc       map[*ast.Object][]FuncDeclaration
-	ImportedPackages map[string]Packages
 	importedloaded   bool
 }
 
@@ -422,6 +342,29 @@ func (pkg PackageDeclaration) HasFunctionFor(str StructDeclaration, funcName str
 	}
 
 	return true
+}
+
+// ImportedPackageFor returns the Package for a giving imported package based on the package name
+// or aliased used in the package for this declaration.
+func (pkg PackageDeclaration) ImportedPackageFor(packageName string) (Package, bool) {
+	pkgPath, ok := pkg.Imports[packageName]
+	if !ok {
+		var found bool
+		for _, imp := range pkg.Imports {
+			if imp.Name == packageName {
+				found = true
+				pkgPath = imp
+				break
+			}
+		}
+
+		if !found {
+			return Package{}, false
+		}
+	}
+
+	pkgItem, ok := pkg.ImportedPackages[pkgPath.Path]
+	return pkgItem, ok
 }
 
 // HasAnnotation returns true/false if giving PackageDeclaration has annotation at package level.
@@ -494,7 +437,7 @@ func (pkg PackageDeclaration) ImportFor(imp string) (ImportDeclaration, error) {
 	return impDeclr, nil
 }
 
-// FunctionFor returns associated FuncDeclaration associated with name.
+// FunctionFor returns associated FuncDeclaration with giving name.
 func (pkg PackageDeclaration) FunctionFor(typeName string) (FuncDeclaration, bool) {
 	for _, typed := range pkg.Functions {
 		if typed.FuncDeclr.Name.Name == typeName {
@@ -547,43 +490,69 @@ func (pkg PackageDeclaration) FunctionsFor(obj *ast.Object) []FuncDeclaration {
 	return pkg.FunctionsForName(obj.Name)
 }
 
+// MethodFor returns associated FuncDeclaration with has struct declaration has receiver.
+func (pkg PackageDeclaration) MethodFor(structName string) ([]FuncDeclaration, bool) {
+	for obj, set := range pkg.ObjectFunc {
+		if obj.Name != structName {
+			continue
+		}
+		return set, true
+	}
+
+	return nil, false
+}
+
 //===========================================================================================================
 
 // VariableDeclaration defines a type which holds annotation data for a giving variable declaration.
 type VariableDeclaration struct {
-	From         int
-	Length       int
-	Package      string
-	Path         string
-	FilePath     string
-	Source       string
-	Comments     string
-	File         string
-	Position     token.Pos
-	Object       *ast.ValueSpec
-	GenObj       *ast.GenDecl
-	Declr        *PackageDeclaration
-	Annotations  []AnnotationDeclaration
-	Associations map[string]AnnotationAssociationDeclaration
+	From            int
+	Length          int
+	Package         string
+	Path            string
+	Name            string
+	NameWithPackage string
+	NameIdent       *ast.Ident
+	FilePath        string
+	Source          string
+	Comments        string
+	File            string
+	Position        token.Pos
+	Object          *ast.ValueSpec
+	GenObj          *ast.GenDecl
+	Declr           *PackageDeclaration
+	Annotations     []AnnotationDeclaration
+	Associations    map[string]AnnotationAssociationDeclaration
 }
 
 // StructDeclaration defines a type which holds annotation data for a giving struct type declaration.
 type StructDeclaration struct {
-	From         int
-	Length       int
-	Package      string
-	Path         string
-	FilePath     string
-	Source       string
-	Comments     string
-	File         string
-	Struct       *ast.StructType
-	Object       *ast.TypeSpec
-	GenObj       *ast.GenDecl
-	Position     token.Pos
-	Declr        *PackageDeclaration
-	Annotations  []AnnotationDeclaration
-	Associations map[string]AnnotationAssociationDeclaration
+	From            int
+	Length          int
+	Package         string
+	Name            string
+	NameWithPackage string
+	Path            string
+	FilePath        string
+	Source          string
+	Comments        string
+	File            string
+	Struct          *ast.StructType
+	Object          *ast.TypeSpec
+	GenObj          *ast.GenDecl
+	Position        token.Pos
+	Declr           *PackageDeclaration
+	Annotations     []AnnotationDeclaration
+	Associations    map[string]AnnotationAssociationDeclaration
+}
+
+// Fields returns a slice containing all fields of giving struct.
+// If struct has no associated PackageDeclaration, error is returned.
+func (str StructDeclaration) Fields() ([]FieldDeclaration, error) {
+	if str.Declr == nil {
+		return nil, errors.New("not possible")
+	}
+	return GetFields(str, str.Declr), nil
 }
 
 // AnnotationsFor returns all annotations with the giving name.
@@ -608,6 +577,8 @@ type TypeDeclaration struct {
 	From            int
 	Length          int
 	Package         string
+	Name            string
+	NameWithPackage string
 	Path            string
 	FilePath        string
 	Source          string
@@ -648,30 +619,31 @@ func (ty TypeDeclaration) AnnotationsFor(typeName string) []AnnotationDeclaratio
 // FuncDeclaration defines a type used to annotate a giving type declaration
 // associated with a ast for a function.
 type FuncDeclaration struct {
-	From            int
-	Length          int
-	Package         string
-	Path            string
-	FilePath        string
-	Exported        bool
-	File            string
-	FuncName        string
-	RecieverName    string
-	Source          string
-	Comments        string
-	Position        token.Pos
-	TypeDeclr       ast.Decl
-	FuncDeclr       *ast.FuncDecl
-	Type            *ast.FuncType
-	Reciever        *ast.Object
-	RecieverIdent   *ast.Ident
-	RecieverPointer *ast.StarExpr
-	FuncType        *ast.FieldList
-	Returns         *ast.FieldList
-	Arguments       *ast.FieldList
-	Declr           *PackageDeclaration
-	Annotations     []AnnotationDeclaration
-	Associations    map[string]AnnotationAssociationDeclaration
+	From                int
+	Length              int
+	Package             string
+	Path                string
+	FilePath            string
+	Exported            bool
+	File                string
+	FuncName            string
+	FuncNameWithPackage string
+	RecieverName        string
+	Source              string
+	Comments            string
+	Position            token.Pos
+	TypeDeclr           ast.Decl
+	FuncDeclr           *ast.FuncDecl
+	Type                *ast.FuncType
+	Reciever            *ast.Object
+	RecieverIdent       *ast.Ident
+	RecieverPointer     *ast.StarExpr
+	FuncType            *ast.FieldList
+	Returns             *ast.FieldList
+	Arguments           *ast.FieldList
+	Declr               *PackageDeclaration
+	Annotations         []AnnotationDeclaration
+	Associations        map[string]AnnotationAssociationDeclaration
 }
 
 // AnnotationsFor returns all annotations with the giving name.
@@ -752,22 +724,24 @@ type AnnotationAssociationDeclaration struct {
 
 // InterfaceDeclaration defines a type which holds annotation data for a giving interface type declaration.
 type InterfaceDeclaration struct {
-	From         int
-	Length       int
-	Package      string
-	Path         string
-	Source       string
-	Comments     string
-	FilePath     string
-	File         string
-	Interface    *ast.InterfaceType
-	Object       *ast.TypeSpec
-	GenObj       *ast.GenDecl
-	Position     token.Pos
-	Declr        *PackageDeclaration
-	methods      []FunctionDefinition
-	Annotations  []AnnotationDeclaration
-	Associations map[string]AnnotationAssociationDeclaration
+	From            int
+	Length          int
+	Package         string
+	Path            string
+	Name            string
+	NameWithPackage string
+	Source          string
+	Comments        string
+	FilePath        string
+	File            string
+	Interface       *ast.InterfaceType
+	Object          *ast.TypeSpec
+	GenObj          *ast.GenDecl
+	Position        token.Pos
+	Declr           *PackageDeclaration
+	methods         []FunctionDefinition
+	Annotations     []AnnotationDeclaration
+	Associations    map[string]AnnotationAssociationDeclaration
 }
 
 // GetImports returns a map containing all import paths related to
@@ -1117,6 +1091,16 @@ func (flds Fields) Embedded() Fields {
 	return fields
 }
 
+// ByName returns giving field with name.
+func (flds Fields) ByName(name string) (FieldDeclaration, bool) {
+	for _, fl := range flds {
+		if fl.FieldName == name {
+			return fl, true
+		}
+	}
+	return FieldDeclaration{}, false
+}
+
 // TagFor defines a function that returns all appropriate TagDeclaration
 // that match the giving tagName
 func (flds Fields) TagFor(tagName string) []TagDeclaration {
@@ -1388,21 +1372,19 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 		arg.SelectObject = iobj.Sel
 
 		if !importDclr.InternalPkg {
-			if importedParentPackage, ok := pkg.ImportedPackages[importDclr.Path]; ok {
-				if mdeclr, ok := importedParentPackage.PackageFor(importDclr.Path); ok {
-					if mtype, ok := mdeclr.TypeFor(importDclr.Path, iobj.Sel.Name); ok {
-						arg.Spec = mtype.Object
-					}
+			if mdeclr, ok := pkg.ImportedPackages[importDclr.Path]; ok {
+				if mtype, ok := mdeclr.TypeFor(iobj.Sel.Name); ok {
+					arg.Spec = mtype.Object
+				}
 
-					if stype, ok := mdeclr.StructFor(importDclr.Path, iobj.Sel.Name); ok {
-						arg.Spec = stype.Object
-						arg.StructObject = stype.Struct
-					}
+				if stype, ok := mdeclr.StructFor(iobj.Sel.Name); ok {
+					arg.Spec = stype.Object
+					arg.StructObject = stype.Struct
+				}
 
-					if itype, ok := mdeclr.InterfaceFor(importDclr.Path, iobj.Sel.Name); ok {
-						arg.Spec = itype.Object
-						arg.InterfaceObject = itype.Interface
-					}
+				if itype, ok := mdeclr.InterfaceFor(iobj.Sel.Name); ok {
+					arg.Spec = itype.Object
+					arg.InterfaceObject = itype.Interface
 				}
 			}
 		}
@@ -1448,21 +1430,19 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 			arg.SelectObject = value.Sel
 
 			if !importDclr.InternalPkg {
-				if importedParentPackage, ok := pkg.ImportedPackages[importDclr.Path]; ok {
-					if mdeclr, ok := importedParentPackage.PackageFor(importDclr.Path); ok {
-						if mtype, ok := mdeclr.TypeFor(importDclr.Path, value.Sel.Name); ok {
-							arg.Spec = mtype.Object
-						}
+				if mdeclr, ok := pkg.ImportedPackages[importDclr.Path]; ok {
+					if mtype, ok := mdeclr.TypeFor(value.Sel.Name); ok {
+						arg.Spec = mtype.Object
+					}
 
-						if stype, ok := mdeclr.StructFor(importDclr.Path, value.Sel.Name); ok {
-							arg.Spec = stype.Object
-							arg.StructObject = stype.Struct
-						}
+					if stype, ok := mdeclr.StructFor(value.Sel.Name); ok {
+						arg.Spec = stype.Object
+						arg.StructObject = stype.Struct
+					}
 
-						if itype, ok := mdeclr.InterfaceFor(importDclr.Path, value.Sel.Name); ok {
-							arg.Spec = itype.Object
-							arg.InterfaceObject = itype.Interface
-						}
+					if itype, ok := mdeclr.InterfaceFor(value.Sel.Name); ok {
+						arg.Spec = itype.Object
+						arg.InterfaceObject = itype.Interface
 					}
 				}
 
@@ -1571,21 +1551,19 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 			arg.SelectObject = value.Sel
 
 			if !importDclr.InternalPkg {
-				if importedParentPackage, ok := pkg.ImportedPackages[importDclr.Path]; ok {
-					if mdeclr, ok := importedParentPackage.PackageFor(importDclr.Path); ok {
-						if mtype, ok := mdeclr.TypeFor(importDclr.Path, value.Sel.Name); ok {
-							arg.Spec = mtype.Object
-						}
+				if mdeclr, ok := pkg.ImportedPackages[importDclr.Path]; ok {
+					if mtype, ok := mdeclr.TypeFor(value.Sel.Name); ok {
+						arg.Spec = mtype.Object
+					}
 
-						if stype, ok := mdeclr.StructFor(importDclr.Path, value.Sel.Name); ok {
-							arg.Spec = stype.Object
-							arg.StructObject = stype.Struct
-						}
+					if stype, ok := mdeclr.StructFor(value.Sel.Name); ok {
+						arg.Spec = stype.Object
+						arg.StructObject = stype.Struct
+					}
 
-						if itype, ok := mdeclr.InterfaceFor(importDclr.Path, value.Sel.Name); ok {
-							arg.Spec = itype.Object
-							arg.InterfaceObject = itype.Interface
-						}
+					if itype, ok := mdeclr.InterfaceFor(value.Sel.Name); ok {
+						arg.Spec = itype.Object
+						arg.InterfaceObject = itype.Interface
 					}
 				}
 			}

@@ -6,12 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/influx6/faux/fmtwriter"
-
 	"github.com/gokit/rpkit/static"
 
 	"github.com/influx6/moz/ast"
 	"github.com/influx6/moz/gen"
+	"runtime"
 )
 
 // InterfaceRP implements code generation for creating RPC based API which work with either
@@ -19,10 +18,11 @@ import (
 func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.InterfaceDeclaration, declr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
 	packageName := fmt.Sprintf("%srp", strings.ToLower(in.Object.Name.Name))
 	packageFileName := fmt.Sprintf("%s.rp.go", strings.ToLower(in.Object.Name.Name))
-	packagePath := filepath.Join(toPackage, packageName)
+	packagePath := join(toPackage, packageName)
 
 	sections := strings.Split(strings.TrimSuffix(declr.Path, "/"), "/")
 	sections = sections[1:]
+	serviceSection := sections[len(sections)-1:]
 
 	var usesInternalPackage bool
 	var noArgNoReturnMethods,
@@ -300,8 +300,8 @@ methodLoop:
 					InputWithErrorMethods:          inputWithOnlyErrorMethods,
 					InputAndOutputMethods:          inputWithOutputOnlyMethods,
 					InputAndOutputWithErrorMethods: inputWithOutputWithErrorMethods,
-					ServiceName:                    strings.Join(sections, "."),
-					IServiceName:                   strings.Join(sections, "/"),
+					ServiceName:                    strings.Join(serviceSection, "."),
+					IServiceName:                   strings.Join(serviceSection, "/"),
 				},
 			),
 		),
@@ -370,8 +370,8 @@ methodLoop:
 					InputWithErrorMethods:          inputWithOnlyErrorMethods,
 					InputAndOutputMethods:          inputWithOutputOnlyMethods,
 					InputAndOutputWithErrorMethods: inputWithOutputWithErrorMethods,
-					ServiceName:                    strings.Join(sections, "."),
-					IServiceName:                   strings.Join(sections, "/"),
+					ServiceName:                    strings.Join(serviceSection, "."),
+					IServiceName:                   strings.Join(serviceSection, "/"),
 				},
 			),
 		),
@@ -381,12 +381,12 @@ methodLoop:
 		{
 			Dir:      packageName,
 			FileName: packageFileName,
-			Writer:   fmtwriter.New(iGen, true, true),
+			Writer:   iGen,
 		},
 		{
 			Dir:      packageName,
 			FileName: "encoding.rp.go",
-			Writer:   fmtwriter.New(encodingGen, true, true),
+			Writer:   encodingGen,
 		},
 	}, nil
 }
@@ -397,4 +397,12 @@ func skipArg(arg ast.ArgType) bool {
 	}
 
 	return false
+}
+
+func join(s ...string) string {
+	ss := filepath.Join(s...)
+	if runtime.GOOS == "windows" {
+		return filepath.ToSlash(ss)
+	}
+	return ss
 }

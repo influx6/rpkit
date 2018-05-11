@@ -34,6 +34,17 @@ const (
 	ServiceCodePathName = "{{.ImplPackageName}}"
 )
 
+// error type strings
+const (
+    URLError = "url_error"
+    ActionError = "action_error"
+    ActionPanicError = "action_panic_error"
+    MethodTypeError = "method_type_error"
+    AcceptTypeUnknownError = "accept_type_unknown_error"
+    RequestDecodingError = "request_decoding_error"
+    ResponseEncodingError = "response_encoding_error"
+)
+
 // errors ...
 var (
 	ErrNotInContext = errors.New("item not in context")
@@ -294,6 +305,7 @@ type ResponseValidation func(*http.Response) error
 // JSONErrorResponse defines a structure to contain error message data
 // delivered by the server.
 type JSONErrorResponse struct{
+	Type string `json:"type"`
 	Code int `json:"code"`
 	Err []byte `json:"err"`
 	Message string `json:"message"`
@@ -337,7 +349,7 @@ type HTTPClient interface {
 const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
-const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
@@ -588,7 +600,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -628,12 +640,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		return
 	}
 
-	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), {{$method.Name}}ServiceRoutePath) {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -652,7 +664,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					impl.hook.RequestRejected(ctx)
 				}
 			
-				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -694,7 +706,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				}
 				
 				derr := fmt.Errorf("panic err: %#v", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -718,7 +730,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestError(ctx, actionErr)
 		}
 		
-		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -752,7 +764,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
-const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
@@ -1002,7 +1014,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1043,12 +1055,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		return
 	}
 
-	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), {{$method.Name}}ServiceRoutePath) {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1067,7 +1079,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					impl.hook.RequestRejected(ctx)
 				}
 			
-				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -1109,7 +1121,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				}
 				
 				derr := fmt.Errorf("panic err: %#v", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1133,7 +1145,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestError(ctx, actionErr)
 		}
 		
-		jsonWriteError(w, http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1167,7 +1179,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
-const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
@@ -1449,7 +1461,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1490,12 +1502,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		return
 	}
 
-	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), {{$method.Name}}ServiceRoutePath) {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1514,7 +1526,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					impl.hook.RequestRejected(ctx)
 				}
 		
-				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -1556,7 +1568,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				}
 				
 				derr := fmt.Errorf("panic err: %#v", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -1580,7 +1592,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestError(ctx,actionErr)
 		}
 		
-		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1614,7 +1626,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
-const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
@@ -1892,7 +1904,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1933,12 +1945,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		return
 	}
 
-	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), {{$method.Name}}ServiceRoutePath) {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -1957,7 +1969,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					impl.hook.RequestRejected(ctx)
 				}
 		
-				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -1999,7 +2011,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				}
 				
 				derr := fmt.Errorf("panic err: %#v", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -2023,7 +2035,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestError(ctx, actionErr)
 		}
 		
-		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2057,7 +2069,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
-const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
@@ -2334,7 +2346,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2374,12 +2386,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		return
 	}
 
-	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), {{$method.Name}}ServiceRoutePath) {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2398,7 +2410,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					impl.hook.RequestRejected(ctx)
 				}
 		
-				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -2440,7 +2452,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				}
 				
 				derr := fmt.Errorf("panic err: %#v", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -2464,7 +2476,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestError(ctx, actionErr)
 		}
 	
-		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2498,7 +2510,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
-const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
 
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
@@ -2804,7 +2816,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2844,12 +2856,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		return
 	}
 
-	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), {{$method.Name}}ServiceRoutePath) {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -2868,7 +2880,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					impl.hook.RequestRejected(ctx)
 				}
 				
-				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -2911,7 +2923,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				}
 				
 				derr := fmt.Errorf("panic err: %#v", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -2935,7 +2947,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestError(ctx, actionErr)
 		}
 	
-		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -3277,7 +3289,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -3317,12 +3329,12 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 		return
 	}
 
-	if r.URL.Path != {{$method.Name}}ServiceRoutePath {
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), {{$method.Name}}ServiceRoutePath) {
 		if impl.hook != nil {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+{{$method.Name}}ServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -3341,7 +3353,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 					impl.hook.RequestRejected(ctx)
 				}
 
-				jsonWriteError(w, http.StatusBadRequest, "request content type not supported",
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
@@ -3384,7 +3396,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 				}
 
 				derr := fmt.Errorf("panic err: %#v", rerr)
-				jsonWriteError(w, http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": {{quote $Itr.Path}},
 					"api_base": BaseServiceName,
 					"method": {{quote $method.Name}},
@@ -3408,7 +3420,7 @@ func (impl impl{{$method.Name}}Handler) ServeHTTP(w http.ResponseWriter, r *http
 			impl.hook.RequestError(ctx, actionErr)
 		}
 
-		jsonWriteError(w, http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": {{quote $Itr.Path}},
 			"api_base": BaseServiceName,
 			"method": {{quote $method.Name}},
@@ -3541,8 +3553,9 @@ func loadJSONError(r io.Reader) (JSONErrorResponse, error) {
 	return res, nil
 }
 
-func jsonWriteError(w http.ResponseWriter, code int, message string, err error, meta map[string]interface{}){
+func jsonWriteError(w http.ResponseWriter, itype string, code int, message string, err error, meta map[string]interface{}){
 	var res JSONErrorResponse
+	res.Type = itype
 	res.Code = code
 	res.Meta = meta
 	res.Message = message
@@ -3567,3 +3580,9 @@ func jsonWriteError(w http.ResponseWriter, code int, message string, err error, 
 	log.Printf("unable to send error response for error %+q: %+q", err, err2)
 }
 
+func prefixIfNeed(s string, p string) string {
+    if strings.HasPrefix(s, p){
+        return s
+    }
+    return p+s
+}
