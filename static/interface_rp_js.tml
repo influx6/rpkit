@@ -1,0 +1,379 @@
+// All code below are auto-generated and should not be edited by hand.
+// See https://github.com/gokit/rpkit for more info.
+{{ $Itr := .Itr}} {{$Pkg := .Pkg}} {{$ServiceName := .ServiceName}}
+
+const {URL} = require("universal-url");
+
+// BaseServiceName defines the base name of service root.
+export const BaseServiceName = {{quote .ServiceName}}
+
+// MethodServiceName defines the complete name of this giving API service.
+export const MethodServiceName = "{{.ServiceName}}/{{.Itr.Object.Name.Name}}"
+
+// ServiceCodePath defines the path to this generated package which contains the implemented service methods.
+export const ServiceCodePath = "{{.TargetPackage}}"
+
+// ServiceCodePathName defines the name giving to
+// this package.
+export const ServiceCodePathName = "{{.ImplPackageName}}"
+
+// error type strings
+export const URLError = "url_error"
+export const ActionError = "action_error"
+export const ActionPanicError = "action_panic_error"
+export const MethodTypeError = "method_type_error"
+export const AcceptTypeUnknownError = "accept_type_unknown_error"
+export const RequestDecodingError = "request_decoding_error"
+export const ResponseEncodingError = "response_encoding_error"
+
+// JSONErrorResponse defines a structure to contain error message data
+// delivered by the server.
+export function JSONErrorResponse(type, code, err, message, meta){
+    return {
+        Type: type,
+        Code: code,
+        Err: err,
+        Message: message,
+        Meta: meta,
+    }
+}
+{{range $_, $method := .NoArgAndReturns}}
+///////////////////////////////////////////////////////////////////
+// RP: No Arguments and No Return Methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+///////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+export const {{toLower $method.Name}}ServiceRoutePathURL = new URL({{$method.Name}}ServiceRoutePath)
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+{{end}}
+{{range $_, $method := .OnlyErrorMethods}}
+///////////////////////////////////////////////////////////////////
+// RP: Error Returning methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+///////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+export const {{toLower $method.Name}}ServiceRoutePathURL = new URL({{$method.Name}}ServiceRoutePath)
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+{{end}}
+{{range $_, $method := .OutputWithErrorMethods}}
+///////////////////////////////////////////////////////////////////
+// RP: Output with Returning Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+///////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+export const {{toLower $method.Name}}ServiceRoutePathURL = new URL({{$method.Name}}ServiceRoutePath)
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}} defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$retType.Type | capitalize}}(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+// type {{$method.Name}}Encoder interface{
+//	 Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+// }
+
+{{end}}
+{{range $_, $method := .OutputWithNoErrorMethods}}
+///////////////////////////////////////////////////////////////////
+// RP: Output Returning No Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+///////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+export const {{toLower $method.Name}}ServiceRoutePathURL = new URL({{$method.Name}}ServiceRoutePath)
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}} defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$retType.Type | capitalize}}(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+// type {{$method.Name}}MethodContract interface{
+//  	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+// }
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+// type {{$method.Name}}Encoder interface{
+//  	Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+// }
+
+{{end}}
+{{range $_, $method := .InputWithErrorMethods}}
+///////////////////////////////////////////////////////////////////
+// RP: Input Returning Only Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+///////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+export const {{toLower $method.Name}}ServiceRoutePathURL = new URL({{$method.Name}}ServiceRoutePath)
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}} defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$argsType.Type | capitalize}}(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}} defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$argsType.Type | capitalize}}(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+// type {{$method.Name}}MethodContract interface{
+//  	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+// }
+
+// {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
+// expected by {{$method.Name}}MethodContract.{{$method.Name}}.
+// type {{$method.Name}}Decoder interface{
+//  	Decode(io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+// }
+
+{{ end }}
+{{range $_, $method := .InputAndOutputMethods}}
+///////////////////////////////////////////////////////////////////
+// RP: Input And Output Only methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+///////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+export const {{toLower $method.Name}}ServiceRoutePathURL = new URL({{$method.Name}}ServiceRoutePath)
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}} defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$retType.Type | capitalize}}(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}} defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$argsType.Type | capitalize}}(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}} defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$argsType.Type | capitalize}}(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+// type {{$method.Name}}MethodContract interface{
+//  	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+// }
+
+// {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
+// expected by {{$method.Name}}MethodContract.{{$method.Name}}.
+// type {{$method.Name}}Decoder interface{
+//  	Decode(io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+// }
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+// type {{$method.Name}}Encoder interface{
+//  	Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+// }
+
+{{end}}
+{{range $_, $method := .InputAndOutputWithErrorMethods}}
+///////////////////////////////////////////////////////////////////
+// RP: Input And Output Returning Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+///////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}/{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
+// {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
+// ensures the created path is valid as a url.
+export const {{toLower $method.Name}}ServiceRoutePathURL = new URL({{$method.Name}}ServiceRoutePath)
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`
+
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}} defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$retType.Type | capitalize}}(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}} defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$argsType.Type | capitalize}}(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}} defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+function {{$method.Name}}Method{{$argsType.Type | capitalize}}(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+
+// {{$method.Name}}MethodContract defines a contract interface for method {{ quote $method.Name}}
+// provided by "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}" in {{quote $Itr.Path }}. It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+// type {{$method.Name}}MethodContract interface{
+//  	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+// }
+
+// {{$method.Name}}Decoder defines a interface which expose a single method to decode the request data
+// expected by {{$method.Name}}MethodContract.{{$method.Name}}.
+// type {{$method.Name}}Decoder interface{
+//  	Decode(io.Reader) ({{if equal ($method.ArgTypePos "context.Context") 0}}{{$argType := $method.GetArgsAt 1}}{{ $argType.ExType }}{{else}}{{$argType := $method.GetArgsAt 0}}{{ $argType.ExType }}{{end}}, error)
+// }
+
+// {{$method.Name}}Encoder defines a interface which expose a single method to encode the response
+// returned by {{$method.Name}}MethodContract.{{$method.Name}}.
+// type {{$method.Name}}Encoder interface{
+//  	Encode(io.Writer, {{ $argType := $method.GetReturnsAt 0}}{{ $argType.ExType }}) error
+// }
+
+{{end}}
+

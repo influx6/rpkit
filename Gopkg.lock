@@ -19,8 +19,8 @@
 [[projects]]
   name = "github.com/fatih/color"
   packages = ["."]
-  revision = "507f6050b8568533fb3f5504de8e5205fa62a114"
-  version = "v1.6.0"
+  revision = "5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4"
+  version = "v1.7.0"
 
 [[projects]]
   branch = "master"
@@ -30,7 +30,7 @@
     "assets/packers",
     "generators/data"
   ]
-  revision = "d96ae7ebd775a4337440550c32b98dc38c0d6fd8"
+  revision = "8249b22caa7e0dc7e9d5f3539d06e8cca34404d3"
 
 [[projects]]
   name = "github.com/gorilla/css"
@@ -89,7 +89,7 @@
     "gen/templates",
     "utils"
   ]
-  revision = "f56c8a0aadacb9214374dd1b9ee38d9015c2f8fe"
+  revision = "d12c9a421c3c48f786305148b8eaad63a633b9f4"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -122,13 +122,13 @@
     "html",
     "html/atom"
   ]
-  revision = "f73e4c9ed3b7ebdd5f699a16a880c2b1994e50dd"
+  revision = "dfa909b99c79129e1100513e5cd36307665e5723"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "7dfd1290c7917b7ba22824b9d24954ab3002fe24"
+  revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
 
 [solve-meta]
   analyzer-name = "dep"

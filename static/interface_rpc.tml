@@ -2982,6 +2982,7 @@ const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}
 
 // {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
 const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}/{{$Itr.Object.Name.Name}}/{{$method.Name}}"
+
 // {{toLower $method.Name}}ServiceRoutePathURL defines a parsed path for the {{$method.Name}}, it
 // ensures the created path is valid as a url.
 var {{toLower $method.Name}}ServiceRoutePathURL = mustSimpleParseURL({{$method.Name}}ServiceRoutePath)

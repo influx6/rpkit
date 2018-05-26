@@ -809,6 +809,7 @@ type ArgType struct {
 	Type            string
 	ExType          string
 	Package         string
+	IsStruct        bool
 	BaseType        bool
 	Import          ImportDeclaration
 	Import2         ImportDeclaration
@@ -826,6 +827,27 @@ type ArgType struct {
 	PointerType     *ast.StarExpr
 	IdentType       *ast.Ident
 	Tags            []TagDeclaration
+	Pkg             *PackageDeclaration
+}
+
+func (a ArgType) GetStructJSON() string {
+	if a.StructObject == nil {
+		return ""
+	}
+
+	str := StructDeclaration{
+		Object:          a.Spec,
+		Struct:          a.StructObject,
+		Name:            a.Type,
+		Declr:           a.Pkg,
+		NameWithPackage: fmt.Sprintf("%s.%s", a.Package, a.Type),
+	}
+
+	res, err := MapOutFieldsToJSON(str, "json", "")
+	if err != nil {
+		return ""
+	}
+	return res
 }
 
 // FunctionDefinition defines a type to represent the function/method declarations of an
@@ -1288,6 +1310,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 		arg := ArgType{
 			Name:            name,
+			Pkg:             pkg,
 			Tags:            tags,
 			NameObject:      nameObj,
 			Type:            getName(iobj),
@@ -1314,6 +1337,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 		arg := ArgType{
 			Name:       name,
+			Pkg:        pkg,
 			Tags:       tags,
 			NameObject: nameObj,
 			Type:       getName(iobj),
@@ -1328,6 +1352,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 				arg.Spec = def
 				switch obx := def.Type.(type) {
 				case *ast.StructType:
+					arg.IsStruct = true
 					arg.StructObject = obx
 				case *ast.InterfaceType:
 					arg.InterfaceObject = obx
@@ -1359,6 +1384,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 		}
 
 		arg := ArgType{
+			Pkg:            pkg,
 			Name:           name,
 			Import:         importDclr,
 			Tags:           tags,
@@ -1373,12 +1399,14 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 		if !importDclr.InternalPkg {
 			if mdeclr, ok := pkg.ImportedPackages[importDclr.Path]; ok {
+				arg.Pkg = &mdeclr.Packages[0]
 				if mtype, ok := mdeclr.TypeFor(iobj.Sel.Name); ok {
 					arg.Spec = mtype.Object
 				}
 
 				if stype, ok := mdeclr.StructFor(iobj.Sel.Name); ok {
 					arg.Spec = stype.Object
+					arg.IsStruct = true
 					arg.StructObject = stype.Struct
 				}
 
@@ -1404,6 +1432,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 		var arg ArgType
 		arg.Tags = tags
+		arg.Pkg = pkg
 		arg.Name = name
 		arg.PointerType = iobj
 		arg.Type = getName(iobj)
@@ -1431,11 +1460,13 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 			if !importDclr.InternalPkg {
 				if mdeclr, ok := pkg.ImportedPackages[importDclr.Path]; ok {
+					arg.Pkg = &mdeclr.Packages[0]
 					if mtype, ok := mdeclr.TypeFor(value.Sel.Name); ok {
 						arg.Spec = mtype.Object
 					}
 
 					if stype, ok := mdeclr.StructFor(value.Sel.Name); ok {
+						arg.IsStruct = true
 						arg.Spec = stype.Object
 						arg.StructObject = stype.Struct
 					}
@@ -1450,6 +1481,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 		case *ast.InterfaceType:
 			arg.InterfaceObject = value
 		case *ast.StructType:
+			arg.IsStruct = true
 			arg.StructObject = value
 		case *ast.ArrayType:
 			arg.ArrayType = value
@@ -1465,6 +1497,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 					arg.Spec = def
 					switch obx := def.Type.(type) {
 					case *ast.StructType:
+						arg.IsStruct = true
 						arg.StructObject = obx
 					case *ast.InterfaceType:
 						arg.InterfaceObject = obx
@@ -1490,6 +1523,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 		var arg ArgType
 		arg.Name = name
+		arg.Pkg = pkg
 		arg.Tags = tags
 		arg.MapType = iobj
 		arg.Type = getName(iobj)
@@ -1525,6 +1559,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 		var arg ArgType
 		arg.Name = name
+		arg.Pkg = pkg
 		arg.Tags = tags
 		arg.ArrayType = iobj
 		arg.Type = getName(iobj)
@@ -1552,11 +1587,13 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 			if !importDclr.InternalPkg {
 				if mdeclr, ok := pkg.ImportedPackages[importDclr.Path]; ok {
+					arg.Pkg = &mdeclr.Packages[0]
 					if mtype, ok := mdeclr.TypeFor(value.Sel.Name); ok {
 						arg.Spec = mtype.Object
 					}
 
 					if stype, ok := mdeclr.StructFor(value.Sel.Name); ok {
+						arg.IsStruct = true
 						arg.Spec = stype.Object
 						arg.StructObject = stype.Struct
 					}
@@ -1572,6 +1609,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 		case *ast.InterfaceType:
 			arg.InterfaceObject = value
 		case *ast.StructType:
+			arg.IsStruct = true
 			arg.StructObject = value
 		case *ast.Ident:
 			arg.IdentType = value
@@ -1583,6 +1621,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 					arg.Spec = def
 					switch obx := def.Type.(type) {
 					case *ast.StructType:
+						arg.IsStruct = true
 						arg.StructObject = obx
 					case *ast.InterfaceType:
 						arg.InterfaceObject = obx
@@ -1608,6 +1647,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 
 		var arg ArgType
 		arg.Name = name
+		arg.Pkg = pkg
 		arg.Tags = tags
 		arg.Type = getName(iobj.Value)
 		arg.ExType = getNameAsFromOuter(iobj, filepath.Base(pkg.Package))
@@ -1633,6 +1673,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 		case *ast.InterfaceType:
 			arg.InterfaceObject = value
 		case *ast.StructType:
+			arg.IsStruct = true
 			arg.StructObject = value
 		case *ast.ArrayType:
 			arg.ArrayType = value
@@ -1647,6 +1688,7 @@ func GetArgTypeFromField(retCounter int, varPrefix string, targetFile string, re
 					arg.Spec = def
 					switch obx := def.Type.(type) {
 					case *ast.StructType:
+						arg.IsStruct = true
 						arg.StructObject = obx
 					case *ast.InterfaceType:
 						arg.InterfaceObject = obx
