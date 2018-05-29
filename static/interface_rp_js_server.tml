@@ -1,0 +1,1653 @@
+// All code below are auto-generated and should not be edited by hand.
+// See https://github.com/gokit/rpkit for more info.
+{{ $Itr := .Itr}} {{$Pkg := .Pkg}} {{$ServiceName := .ServiceName}}
+
+const http = require("http");
+const URL = require("url-parse");
+const httpStatus = require("statuses");
+
+// BaseServiceName defines the base name of service root.
+export const BaseServiceName = {{quote .ServiceName}};
+
+// MethodServiceName defines the complete name of this giving API service.
+export const MethodServiceName = "{{.ServiceName}}/{{.Itr.Object.Name.Name}}";
+
+// ServiceCodePath defines the path to this generated package which contains the implemented service methods.
+export const ServiceCodePath = "{{.TargetPackage}}";
+
+// ServiceCodePathName defines the name giving to
+// this package.
+export const ServiceCodePathName = "{{.ImplPackageName}}";
+
+// error type strings
+export const URLError = "url_error";
+export const ActionError = "action_error";
+export const ActionPanicError = "action_panic_error";
+export const MethodTypeError = "method_type_error";
+export const AcceptTypeUnknownError = "accept_type_unknown_error";
+export const RequestDecodingError = "request_decoding_error";
+export const ResponseEncodingError = "response_encoding_error";
+
+// JSONErrorResponse defines a structure to contain error message data
+// delivered by the server.
+export function JSONErrorResponse(type, code, err, message, meta) {
+    return {
+        Type: type,
+        Code: code,
+        Err: err,
+        Message: message,
+        Meta: meta,
+    }
+}
+
+// JSONEncoding implements a Object that possess methods
+// able to encode and decode a json response.
+const JSONEncoding = Object.freeze({
+    Encode: function EncodeJSON(req, res, model) {
+        return new Promise(function encodeJSONResolver(resolve, reject) {
+            const accepts = req.getHeader("accept");
+            if (!accepts.indexOf("application/json")) {
+                reject(new Error("request does not accept json"));
+                return;
+            }
+
+            let data = null;
+
+            try{
+                data = JSON.stringify(model);
+            }catch(e){
+                reject(e);
+                return;
+            }
+
+            res.setHeader("Content-Type", "application/json");
+            res.setHeader("Content-Length", data.length);
+            res.Write(data);
+            resolve(true);
+        });
+    },
+    Decode: function DecodeJSON(req) {
+        return new Promise(function decodeJSONResolver(resolve, reject) {
+            if (req.header.contentType.indexOf("application/json") === -1) {
+                reject(new Error("request content type must be application/json"));
+                return
+            }
+
+            const data = [];
+            req.on("data", (d) => data.push(d));
+            req.on("end", () => {
+                try {
+                    const model = JSON.parse(data.join(""));
+                    resolve(model);
+                } catch (err) {
+                    reject(err);
+                }
+            });
+            req.on("error", (err) => {
+                reject(err);
+            });
+        });
+    },
+});
+
+function prefixSlash(c) {
+    if (c.endsWith("/")) {
+        return c;
+    }
+    return `${c};`;
+};
+{{range $_, $method := .NoArgAndReturns}}
+// /////////////////////////////////////////////////////////////////
+// RP: No Arguments and No Return Methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+// /////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`;
+
+// {{$method.Name}}Service returns a middleware-aware function which services
+// server-based requests for the GetByContract method. The GetByContract
+// must return a promise, which must be used for receiving a response.
+export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && typeof options.Headers !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder function");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode function");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+
+    return function {{$method.Name}}ServiceMiddleware(req, res, next) {
+        if (["HEAD", "POST"].indexOf(req.method) === -1) {
+            res.writeHead(httpStatus["not allowed"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["not allowed"],
+                "method not served",
+                "not servicing method, only posts or head", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        if(options.BeforeRequest) options.BeforeRequest(req);
+
+        res.setHeader("X-Agent", "RPKIT")
+        res.setHeader("X-Service", BaseServiceName)
+        res.setHeader("X-Package", {{quote $Itr.Path}})
+        res.setHeader("X-Method", {{quote $method.Name}})
+        res.setHeader("X-Method-Service", MethodServiceName)
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+        for (let key in options.Headers) {
+            res.setHeader(key, options.Headers[key]);
+        }
+
+        if (req.method === "HEAD") {
+            res.writeHead(httpStatus["no content"], {});
+            return
+        }
+
+        const reqURL = URL(req.url);
+        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["bad request"],
+                "method can not be served",
+                "not servicing method, only POST or HEAD", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        Promise.resolve(true).then(() => {
+            const actionResult = {{$method.Name}}Contract(req);
+            if (!(actionResult instanceof Promise)) {
+                res.writeHead(httpStatus["bad request"], {
+                    "Content-Type": "application/json",
+                });
+
+                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                    httpStatus["bad request"],
+                    "method failed to return promise",
+                    new Error("Promise expected as return from method"), {
+                        url: req.url,
+                        headers: req.headers,
+                        http_method: req.method,
+                        package: {{quote $Itr.Path}},
+                        api_base: BaseServiceName,
+                        method: {{quote $method.Name}},
+                        api_service: MethodServiceName,
+                        route: {{$method.Name}}ServiceRoute,
+                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                    })));
+
+                res.end();
+                return
+            }
+
+            return actionResult;
+        }).catch((err) => {
+            if (res.finished) {
+                return
+            }
+
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+                httpStatus["bad request"],
+                "method returned with an error",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then((model) => {
+            res.writeHead(httpStatus["no content"], {});
+            res.end();
+        }).catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
+                httpStatus["bad request"],
+                "failed to encode response",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then(() => {
+            res.end();
+        });
+
+        if (next && typeof next == "function") next();
+    };
+};
+
+{{end}}
+{{range $_, $method := .OnlyErrorMethods}}
+// /////////////////////////////////////////////////////////////////
+// RP: Error Returning methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+// /////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`;
+
+// {{$method.Name}}Service returns a middleware-aware function which services
+// server-based requests for the GetByContract method. The GetByContract
+// must return a promise, which must be used for receiving a response.
+export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && typeof options.Headers !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder function");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode function");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+
+    return function {{$method.Name}}ServiceMiddleware(req, res, next) {
+        if (["HEAD", "POST"].indexOf(req.method) === -1) {
+            res.writeHead(httpStatus["not allowed"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["not allowed"],
+                "method not served",
+                "not servicing method, only posts or head", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        if(options.BeforeRequest) options.BeforeRequest(req);
+
+        res.setHeader("X-Agent", "RPKIT")
+        res.setHeader("X-Service", BaseServiceName)
+        res.setHeader("X-Package", {{quote $Itr.Path}})
+        res.setHeader("X-Method", {{quote $method.Name}})
+        res.setHeader("X-Method-Service", MethodServiceName)
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+        for (let key in options.Headers) {
+            res.setHeader(key, options.Headers[key]);
+        }
+
+        if (req.method === "HEAD") {
+            res.writeHead(httpStatus["no content"], {});
+            return
+        }
+
+        const reqURL = URL(req.url);
+        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["bad request"],
+                "method can not be served",
+                "not servicing method, only POST or HEAD", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        Promise.resolve(true).then(() => {
+            const actionResult = {{$method.Name}}Contract(req);
+            if (!(actionResult instanceof Promise)) {
+                res.writeHead(httpStatus["bad request"], {
+                    "Content-Type": "application/json",
+                });
+
+                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                    httpStatus["bad request"],
+                    "method failed to return promise",
+                    new Error("Promise expected as return from method"), {
+                        url: req.url,
+                        headers: req.headers,
+                        http_method: req.method,
+                        package: {{quote $Itr.Path}},
+                        api_base: BaseServiceName,
+                        method: {{quote $method.Name}},
+                        api_service: MethodServiceName,
+                        route: {{$method.Name}}ServiceRoute,
+                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                    })));
+
+                res.end();
+                return
+            }
+
+            return actionResult;
+        }).catch((err) => {
+            if (res.finished) {
+                return
+            }
+
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+                httpStatus["bad request"],
+                "method returned with an error",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then((model) => {
+            res.writeHead(httpStatus["no content"], {});
+            res.end();
+        }).catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
+                httpStatus["bad request"],
+                "failed to encode response",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then(() => {
+            res.end();
+        });
+
+        if (next && typeof next == "function") next();
+    };
+};
+
+{{end}}
+{{range $_, $method := .OutputWithErrorMethods}}
+// /////////////////////////////////////////////////////////////////
+// RP: Output with Returning Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+// /////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`;
+
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+
+// {{$method.Name}}Service returns a middleware-aware function which services
+// server-based requests for the GetByContract method. The GetByContract
+// must return a promise, which must be used for receiving a response.
+export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && typeof options.Headers !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder function");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode function");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+
+    return function {{$method.Name}}ServiceMiddleware(req, res, next) {
+        if (["HEAD", "POST"].indexOf(req.method) === -1) {
+            res.writeHead(httpStatus["not allowed"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["not allowed"],
+                "method not served",
+                "not servicing method, only posts or head", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        if(options.BeforeRequest) options.BeforeRequest(req);
+
+        res.setHeader("X-Agent", "RPKIT")
+        res.setHeader("X-Service", BaseServiceName)
+        res.setHeader("X-Package", {{quote $Itr.Path}})
+        res.setHeader("X-Method", {{quote $method.Name}})
+        res.setHeader("X-Method-Service", MethodServiceName)
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+        for (let key in options.Headers) {
+            res.setHeader(key, options.Headers[key]);
+        }
+
+        if (req.method === "HEAD") {
+            res.writeHead(httpStatus["no content"], {});
+            return
+        }
+
+        const reqURL = URL(req.url);
+        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["bad request"],
+                "method can not be served",
+                "not servicing method, only POST or HEAD", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        Promise.resolve(true).then(() => {
+            const actionResult = {{$method.Name}}Contract(req);
+            if (!(actionResult instanceof Promise)) {
+                res.writeHead(httpStatus["bad request"], {
+                    "Content-Type": "application/json",
+                });
+
+                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                    httpStatus["bad request"],
+                    "method failed to return promise",
+                    new Error("Promise expected as return from method"), {
+                        url: req.url,
+                        headers: req.headers,
+                        http_method: req.method,
+                        package: {{quote $Itr.Path}},
+                        api_base: BaseServiceName,
+                        method: {{quote $method.Name}},
+                        api_service: MethodServiceName,
+                        route: {{$method.Name}}ServiceRoute,
+                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                    })));
+
+                res.end();
+                return
+            }
+
+            return actionResult;
+        }).catch((err) => {
+            if (res.finished) {
+                return
+            }
+
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+                httpStatus["bad request"],
+                "method returned with an error",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then((model) => {
+            return options.Encoder.Encode(req, res, model);
+        }).catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
+                httpStatus["bad request"],
+                "failed to encode response",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then(() => {
+            res.end();
+        });
+
+        if (next && typeof next == "function") next();
+    };
+};
+
+{{end}}
+{{range $_, $method := .OutputWithNoErrorMethods}}
+// /////////////////////////////////////////////////////////////////
+// RP: Output Returning No Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+// /////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`;
+
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+
+// {{$method.Name}}Service returns a middleware-aware function which services
+// server-based requests for the GetByContract method. The GetByContract
+// must return a promise, which must be used for receiving a response.
+export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && typeof options.Headers !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder function");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode function");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+
+    return function {{$method.Name}}ServiceMiddleware(req, res, next) {
+        if (["HEAD", "POST"].indexOf(req.method) === -1) {
+            res.writeHead(httpStatus["not allowed"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["not allowed"],
+                "method not served",
+                "not servicing method, only posts or head", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+        
+        if(options.BeforeRequest) options.BeforeRequest(req);
+
+        res.setHeader("X-Agent", "RPKIT")
+        res.setHeader("X-Service", BaseServiceName)
+        res.setHeader("X-Package", {{quote $Itr.Path}})
+        res.setHeader("X-Method", {{quote $method.Name}})
+        res.setHeader("X-Method-Service", MethodServiceName)
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+        for (let key in options.Headers) {
+            res.setHeader(key, options.Headers[key]);
+        }
+
+        if (req.method === "HEAD") {
+            res.writeHead(httpStatus["no content"], {});
+            return
+        }
+
+        const reqURL = URL(req.url);
+        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["bad request"],
+                "method can not be served",
+                "not servicing method, only POST or HEAD", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        Promise.resolve(true).then(() => {
+            const actionResult = {{$method.Name}}Contract(req);
+            if (!(actionResult instanceof Promise)) {
+                res.writeHead(httpStatus["bad request"], {
+                    "Content-Type": "application/json",
+                });
+
+                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                    httpStatus["bad request"],
+                    "method failed to return promise",
+                    new Error("Promise expected as return from method"), {
+                        url: req.url,
+                        headers: req.headers,
+                        http_method: req.method,
+                        package: {{quote $Itr.Path}},
+                        api_base: BaseServiceName,
+                        method: {{quote $method.Name}},
+                        api_service: MethodServiceName,
+                        route: {{$method.Name}}ServiceRoute,
+                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                    })));
+
+                res.end();
+                return
+            }
+
+            return actionResult;
+        }).catch((err) => {
+            if (res.finished) {
+                return
+            }
+
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+                httpStatus["bad request"],
+                "method returned with an error",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then((model) => {
+            return options.Encoder.Encode(req, res, model);
+        }).catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
+                httpStatus["bad request"],
+                "failed to encode response",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then(() => {
+            res.end();
+        });
+
+        if (next && typeof next == "function") next();
+    };
+};
+
+{{end}}
+{{range $_, $method := .InputWithErrorMethods}}
+// /////////////////////////////////////////////////////////////////
+// RP: Input Returning Only Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+// /////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`;
+
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+// {{$method.Name}}Service returns a middleware-aware function which services
+// server-based requests for the GetByContract method. The GetByContract
+// must return a promise, which must be used for receiving a response.
+export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && typeof options.Headers !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder function");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode function");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+
+    return function {{$method.Name}}ServiceMiddleware(req, res, next) {
+        if (["HEAD", "POST"].indexOf(req.method) === -1) {
+            res.writeHead(httpStatus["not allowed"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["not allowed"],
+                "method not served",
+                "not servicing method, only posts or head", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+        
+        if(options.BeforeRequest) options.BeforeRequest(req);
+
+        res.setHeader("X-Agent", "RPKIT")
+        res.setHeader("X-Service", BaseServiceName)
+        res.setHeader("X-Package", {{quote $Itr.Path}})
+        res.setHeader("X-Method", {{quote $method.Name}})
+        res.setHeader("X-Method-Service", MethodServiceName)
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+        for (let key in options.Headers) {
+            res.setHeader(key, options.Headers[key]);
+        }
+
+        if (req.method === "HEAD") {
+            res.writeHead(httpStatus["no content"], {});
+            return
+        }
+
+        const reqURL = URL(req.url);
+        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["bad request"],
+                "method can not be served",
+                "not servicing method, only POST or HEAD", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        const decodePromise = options.Decoder.Decode(req);
+        decodePromise.catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                httpStatus["bad request"],
+                "failed to decode request body",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        });
+
+        decodePromise.then((result) => {
+            const actionResult = {{$method.Name}}Contract(req, result);
+            if (!(actionResult instanceof Promise)) {
+                res.writeHead(httpStatus["bad request"], {
+                    "Content-Type": "application/json",
+                });
+
+                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                    httpStatus["bad request"],
+                    "method failed to return promise",
+                    new Error("Promise expected as return from method"), {
+                        url: req.url,
+                        headers: req.headers,
+                        http_method: req.method,
+                        package: {{quote $Itr.Path}},
+                        api_base: BaseServiceName,
+                        method: {{quote $method.Name}},
+                        api_service: MethodServiceName,
+                        route: {{$method.Name}}ServiceRoute,
+                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                    })));
+
+                res.end();
+                return
+            }
+
+            return actionResult;
+        }).catch((err) => {
+            if (res.finished) {
+                return
+            }
+
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+                httpStatus["bad request"],
+                "method returned with an error",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then((model) => {
+            res.writeHead(httpStatus["no content"], {});
+            res.end();
+        }).catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
+                httpStatus["bad request"],
+                "failed to encode response",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then(() => {
+            res.end();
+        });
+
+        if (next && typeof next == "function") next();
+    };
+};
+
+{{ end }}
+{{range $_, $method := .InputAndOutputMethods}}
+// /////////////////////////////////////////////////////////////////
+// RP: Input And Output Only methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+// /////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`;
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+// {{$method.Name}}Service returns a middleware-aware function which services
+// server-based requests for the GetByContract method. The GetByContract
+// must return a promise, which must be used for receiving a response.
+export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && typeof options.Headers !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder function");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode function");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+
+    return function {{$method.Name}}ServiceMiddleware(req, res, next) {
+        if (["HEAD", "POST"].indexOf(req.method) === -1) {
+            res.writeHead(httpStatus["not allowed"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["not allowed"],
+                "method not served",
+                "not servicing method, only posts or head", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        if(options.BeforeRequest) options.BeforeRequest(req);
+
+        res.setHeader("X-Agent", "RPKIT")
+        res.setHeader("X-Service", BaseServiceName)
+        res.setHeader("X-Package", {{quote $Itr.Path}})
+        res.setHeader("X-Method", {{quote $method.Name}})
+        res.setHeader("X-Method-Service", MethodServiceName)
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+        for (let key in options.Headers) {
+            res.setHeader(key, options.Headers[key]);
+        }
+
+        if (req.method === "HEAD") {
+            res.writeHead(httpStatus["no content"], {});
+            return
+        }
+
+        const reqURL = URL(req.url);
+        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["bad request"],
+                "method can not be served",
+                "not servicing method, only POST or HEAD", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        const decodePromise = options.Decoder.Decode(req);
+        decodePromise.catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                httpStatus["bad request"],
+                "failed to decode request body",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        });
+
+        decodePromise.then((result) => {
+            const actionResult = {{$method.Name}}Contract(req, result);
+            if (!(actionResult instanceof Promise)) {
+                res.writeHead(httpStatus["bad request"], {
+                    "Content-Type": "application/json",
+                });
+
+                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                    httpStatus["bad request"],
+                    "method failed to return promise",
+                    new Error("Promise expected as return from method"), {
+                        url: req.url,
+                        headers: req.headers,
+                        http_method: req.method,
+                        package: {{quote $Itr.Path}},
+                        api_base: BaseServiceName,
+                        method: {{quote $method.Name}},
+                        api_service: MethodServiceName,
+                        route: {{$method.Name}}ServiceRoute,
+                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                    })));
+
+                res.end();
+                return
+            }
+
+            return actionResult;
+        }).catch((err) => {
+            if (res.finished) {
+                return
+            }
+
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+                httpStatus["bad request"],
+                "method returned with an error",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then((model) => {
+            return options.Encoder.Encode(req, res, model);
+        }).catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
+                httpStatus["bad request"],
+                "failed to encode response",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then(() => {
+            res.end();
+        });
+
+        if (next && typeof next == "function") next();
+    };
+};
+
+
+{{end}}
+{{range $_, $method := .InputAndOutputWithErrorMethods}}
+// /////////////////////////////////////////////////////////////////
+// RP: Input And Output Returning Error methods
+// Method: {{$method.Name}}
+// Source: {{$Itr.Path}}
+// Handler: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}.{{$method.Name}}
+// /////////////////////////////////////////////////////////////////
+
+// {{$method.Name}}ServiceRoute defines the route for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoute = "{{$ServiceName}}.{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ServiceRoutePath defines the full method path for the {{$method.Name}} method.
+export const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}/{{$Itr.Object.Name.Name}}/{{$method.Name}}";
+
+// {{$method.Name}}ContractSource contains the source version of expected method contract.
+export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
+	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
+}
+`;
+
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
+// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of return value of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $retType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
+// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+// return a default object containing default field values of argument of
+// {{$method.Name}} method.
+export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+    return JSON.parse({{ $argsType.GetStructJSON | quote}});
+}
+{{end}}
+
+// {{$method.Name}}Service returns a middleware-aware function which services
+// server-based requests for the GetByContract method. The GetByContract
+// must return a promise, which must be used for receiving a response.
+export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && typeof options.Headers !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder function");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode function");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+
+    return function {{$method.Name}}ServiceMiddleware(req, res, next) {
+        if (["HEAD", "POST"].indexOf(req.method) === -1) {
+            res.writeHead(httpStatus["not allowed"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["not allowed"],
+                "method not served",
+                "not servicing method, only posts or head", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        if(options.BeforeRequest) options.BeforeRequest(req);
+        
+        res.setHeader("X-Agent", "RPKIT")
+        res.setHeader("X-Service", BaseServiceName)
+        res.setHeader("X-Package", {{quote $Itr.Path}})
+        res.setHeader("X-Method", {{quote $method.Name}})
+        res.setHeader("X-Method-Service", MethodServiceName)
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+
+        for (let key in options.Headers) {
+            res.setHeader(key, options.Headers[key]);
+        }
+
+        if (req.method === "HEAD") {
+            res.writeHead(httpStatus["no content"], {});
+            return
+        }
+
+        const reqURL = URL(req.url);
+        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(MethodTypeError,
+                httpStatus["bad request"],
+                "method can not be served",
+                "not servicing method, only POST or HEAD", {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return
+        }
+
+        const decodePromise = options.Decoder.Decode(req);
+        decodePromise.catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                httpStatus["bad request"],
+                "failed to decode request body",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        });
+
+        decodePromise.then((result) => {
+            const actionResult = {{$method.Name}}Contract(req, result);
+            if (!(actionResult instanceof Promise)) {
+                res.writeHead(httpStatus["bad request"], {
+                    "Content-Type": "application/json",
+                });
+
+                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                    httpStatus["bad request"],
+                    "method failed to return promise",
+                    new Error("Promise expected as return from method"), {
+                        url: req.url,
+                        headers: req.headers,
+                        http_method: req.method,
+                        package: {{quote $Itr.Path}},
+                        api_base: BaseServiceName,
+                        method: {{quote $method.Name}},
+                        api_service: MethodServiceName,
+                        route: {{$method.Name}}ServiceRoute,
+                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                    })));
+
+                res.end();
+                return
+            }
+
+            return actionResult;
+        }).catch((err) => {
+            if (res.finished) {
+                return
+            }
+
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+                httpStatus["bad request"],
+                "method returned with an error",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then((model) => {
+            return options.Encoder.Encode(req, res, model);
+        }).catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
+                httpStatus["bad request"],
+                "failed to encode response",
+                err, {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+        }).then(() => {
+            res.end();
+        });
+
+        if (next && typeof next == "function") next();
+    };
+};
+
+{{end}}
+

@@ -6,6 +6,7 @@ package userservicerp
 import (
 	"encoding/json"
 	"errors"
+	"context"
 	"io"
 
 	"github.com/gokit/rpkit/examples/users"
@@ -25,19 +26,19 @@ var (
 // Encoder defines an interface representing a generic encoder which
 // expects a interface{} type has it's encoding target.
 type Encoder interface{
-	Encode(io.Writer, interface{}) error
+	Encode(context.Context, io.Writer, interface{}) error
 }
 
 // Decoder defines an interface representing a generic decoder which
 // returning a interface{} type has it's response.
 type Decoder interface{
-	Decode(io.Reader) (interface{}, error)
+	Decode(context.Context, io.Reader) (interface{}, error)
 }
 
 // TargetDecoder defines an interface representing a target decoder which
 // expects a type to decode into.
 type TargetDecoder interface{
-	Decode(io.Reader, interface{}) error
+	Decode(context.Context, io.Reader, interface{}) error
 }
 
 
@@ -50,25 +51,25 @@ type TargetDecoder interface{
 // IntTargetEncoder implements a encoder for the int type
 // using a provided function.
 type IntTargetEncoder struct {
-	EncoderFunc func(io.Writer, int) error
+	EncoderFunc func(context.Context, io.Writer, int) error
 }
 
 // Encode implements the encoding function for type int used in users by
 // calling the underline encoding function to handle the work.
-func (td IntTargetEncoder) Encode(w io.Writer, payload int) error {
-	return td.EncoderFunc(w, payload)
+func (td IntTargetEncoder) Encode(ctx context.Context, w io.Writer, payload int) error {
+	return td.EncoderFunc(ctx, w, payload)
 }
 
 // IntTargetDecoder implements a decoder for the int type
 // using a provided function.
 type IntTargetDecoder struct {
-	DecoderFunc func(io.Reader) (int, error)
+	DecoderFunc func(context.Context,io.Reader) (int, error)
 }
 
 // Decode implements the decoding function for type int used in users by
 // calling the underline decoding function to handle the work.
-func (td IntTargetDecoder) Decode(r io.Reader) (int, error) {
-	return td.DecoderFunc(r)
+func (td IntTargetDecoder) Decode(ctx context.Context, r io.Reader) (int, error) {
+	return td.DecoderFunc(ctx, r)
 }
 
 //****************************************************************************
@@ -84,8 +85,8 @@ type IntTypeEncoder struct {
 
 // Encode implements the encode function for type int used in users by
 // calling the underline Encoder to handle the work.
-func (en IntTypeEncoder) Encode(w io.Writer, payload int) error {
-	return en.Encoder.Encode(w, payload)
+func (en IntTypeEncoder) Encode(ctx context.Context, w io.Writer, payload int) error {
+	return en.Encoder.Encode(ctx, w, payload)
 }
 
 
@@ -96,8 +97,8 @@ type IntTypeDecoder struct {
 
 // Decode implements the decode function for type int used in users by
 // calling the underline Decoder to handle the work.
-func (td IntTypeDecoder) Decode(r io.Reader) (int, error) {
-	recs, err := td.Decoder.Decode(r)
+func (td IntTypeDecoder) Decode(ctx context.Context,r io.Reader) (int, error) {
+	recs, err := td.Decoder.Decode(ctx, r)
 	if err != nil {
 		return recs.(int), err
 	}
@@ -120,25 +121,25 @@ func (td IntTypeDecoder) Decode(r io.Reader) (int, error) {
 // StringTargetEncoder implements a encoder for the string type
 // using a provided function.
 type StringTargetEncoder struct {
-	EncoderFunc func(io.Writer, string) error
+	EncoderFunc func(context.Context, io.Writer, string) error
 }
 
 // Encode implements the encoding function for type string used in users by
 // calling the underline encoding function to handle the work.
-func (td StringTargetEncoder) Encode(w io.Writer, payload string) error {
-	return td.EncoderFunc(w, payload)
+func (td StringTargetEncoder) Encode(ctx context.Context, w io.Writer, payload string) error {
+	return td.EncoderFunc(ctx, w, payload)
 }
 
 // StringTargetDecoder implements a decoder for the string type
 // using a provided function.
 type StringTargetDecoder struct {
-	DecoderFunc func(io.Reader) (string, error)
+	DecoderFunc func(context.Context,io.Reader) (string, error)
 }
 
 // Decode implements the decoding function for type string used in users by
 // calling the underline decoding function to handle the work.
-func (td StringTargetDecoder) Decode(r io.Reader) (string, error) {
-	return td.DecoderFunc(r)
+func (td StringTargetDecoder) Decode(ctx context.Context, r io.Reader) (string, error) {
+	return td.DecoderFunc(ctx, r)
 }
 
 //****************************************************************************
@@ -154,8 +155,8 @@ type StringTypeEncoder struct {
 
 // Encode implements the encode function for type string used in users by
 // calling the underline Encoder to handle the work.
-func (en StringTypeEncoder) Encode(w io.Writer, payload string) error {
-	return en.Encoder.Encode(w, payload)
+func (en StringTypeEncoder) Encode(ctx context.Context, w io.Writer, payload string) error {
+	return en.Encoder.Encode(ctx, w, payload)
 }
 
 
@@ -166,8 +167,8 @@ type StringTypeDecoder struct {
 
 // Decode implements the decode function for type string used in users by
 // calling the underline Decoder to handle the work.
-func (td StringTypeDecoder) Decode(r io.Reader) (string, error) {
-	recs, err := td.Decoder.Decode(r)
+func (td StringTypeDecoder) Decode(ctx context.Context,r io.Reader) (string, error) {
+	recs, err := td.Decoder.Decode(ctx, r)
 	if err != nil {
 		return recs.(string), err
 	}
@@ -190,25 +191,25 @@ func (td StringTypeDecoder) Decode(r io.Reader) (string, error) {
 // NewUserTargetEncoder implements a encoder for the users.NewUser type
 // using a provided function.
 type NewUserTargetEncoder struct {
-	EncoderFunc func(io.Writer, users.NewUser) error
+	EncoderFunc func(context.Context, io.Writer, users.NewUser) error
 }
 
 // Encode implements the encoding function for type users.NewUser used in users by
 // calling the underline encoding function to handle the work.
-func (td NewUserTargetEncoder) Encode(w io.Writer, payload users.NewUser) error {
-	return td.EncoderFunc(w, payload)
+func (td NewUserTargetEncoder) Encode(ctx context.Context, w io.Writer, payload users.NewUser) error {
+	return td.EncoderFunc(ctx, w, payload)
 }
 
 // NewUserTargetDecoder implements a decoder for the users.NewUser type
 // using a provided function.
 type NewUserTargetDecoder struct {
-	DecoderFunc func(io.Reader) (users.NewUser, error)
+	DecoderFunc func(context.Context,io.Reader) (users.NewUser, error)
 }
 
 // Decode implements the decoding function for type users.NewUser used in users by
 // calling the underline decoding function to handle the work.
-func (td NewUserTargetDecoder) Decode(r io.Reader) (users.NewUser, error) {
-	return td.DecoderFunc(r)
+func (td NewUserTargetDecoder) Decode(ctx context.Context, r io.Reader) (users.NewUser, error) {
+	return td.DecoderFunc(ctx, r)
 }
 
 //****************************************************************************
@@ -224,8 +225,8 @@ type NewUserTypeEncoder struct {
 
 // Encode implements the encode function for type users.NewUser used in users by
 // calling the underline Encoder to handle the work.
-func (en NewUserTypeEncoder) Encode(w io.Writer, payload users.NewUser) error {
-	return en.Encoder.Encode(w, payload)
+func (en NewUserTypeEncoder) Encode(ctx context.Context, w io.Writer, payload users.NewUser) error {
+	return en.Encoder.Encode(ctx, w, payload)
 }
 
 
@@ -236,9 +237,9 @@ type NewUserTypeDecoder struct {
 
 // Decode implements the decode function for type users.NewUser used in users by
 // calling the underline Decoder to handle the work.
-func (td NewUserTypeDecoder) Decode(r io.Reader) (users.NewUser, error) {  
+func (td NewUserTypeDecoder) Decode(ctx context.Context,r io.Reader) (users.NewUser, error) {  
 	var res users.NewUser
-	err := td.Decoder.Decode(r, &res)
+	err := td.Decoder.Decode(ctx, r, &res)
 	return res, err
 }
 
@@ -252,25 +253,25 @@ func (td NewUserTypeDecoder) Decode(r io.Reader) (users.NewUser, error) {
 // UserTargetEncoder implements a encoder for the users.User type
 // using a provided function.
 type UserTargetEncoder struct {
-	EncoderFunc func(io.Writer, users.User) error
+	EncoderFunc func(context.Context, io.Writer, users.User) error
 }
 
 // Encode implements the encoding function for type users.User used in users by
 // calling the underline encoding function to handle the work.
-func (td UserTargetEncoder) Encode(w io.Writer, payload users.User) error {
-	return td.EncoderFunc(w, payload)
+func (td UserTargetEncoder) Encode(ctx context.Context, w io.Writer, payload users.User) error {
+	return td.EncoderFunc(ctx, w, payload)
 }
 
 // UserTargetDecoder implements a decoder for the users.User type
 // using a provided function.
 type UserTargetDecoder struct {
-	DecoderFunc func(io.Reader) (users.User, error)
+	DecoderFunc func(context.Context,io.Reader) (users.User, error)
 }
 
 // Decode implements the decoding function for type users.User used in users by
 // calling the underline decoding function to handle the work.
-func (td UserTargetDecoder) Decode(r io.Reader) (users.User, error) {
-	return td.DecoderFunc(r)
+func (td UserTargetDecoder) Decode(ctx context.Context, r io.Reader) (users.User, error) {
+	return td.DecoderFunc(ctx, r)
 }
 
 //****************************************************************************
@@ -286,8 +287,8 @@ type UserTypeEncoder struct {
 
 // Encode implements the encode function for type users.User used in users by
 // calling the underline Encoder to handle the work.
-func (en UserTypeEncoder) Encode(w io.Writer, payload users.User) error {
-	return en.Encoder.Encode(w, payload)
+func (en UserTypeEncoder) Encode(ctx context.Context, w io.Writer, payload users.User) error {
+	return en.Encoder.Encode(ctx, w, payload)
 }
 
 
@@ -298,9 +299,9 @@ type UserTypeDecoder struct {
 
 // Decode implements the decode function for type users.User used in users by
 // calling the underline Decoder to handle the work.
-func (td UserTypeDecoder) Decode(r io.Reader) (users.User, error) {  
+func (td UserTypeDecoder) Decode(ctx context.Context,r io.Reader) (users.User, error) {  
 	var res users.User
-	err := td.Decoder.Decode(r, &res)
+	err := td.Decoder.Decode(ctx, r, &res)
 	return res, err
 }
 
@@ -317,7 +318,7 @@ func (td UserTypeDecoder) Decode(r io.Reader) (users.User, error) {
 type JSONEncoder struct{}
 
 // Encode implements the necessary logic to use json for encoding.
-func (JSONEncoder) Encode(w io.Writer, payload interface{}) error {
+func (JSONEncoder) Encode(ctx context.Context,w io.Writer, payload interface{}) error {
 	return json.NewEncoder(w).Encode(payload)
 }
 
@@ -326,7 +327,7 @@ func (JSONEncoder) Encode(w io.Writer, payload interface{}) error {
 type JSONDecoder struct{}
 
 // Encode implements the necessary logic to use json for encoding.
-func (JSONDecoder) Decode(r io.Reader) (interface{}, error) {
+func (JSONDecoder) Decode(ctx context.Context,r io.Reader) (interface{}, error) {
 	var data interface{}
 	err := json.NewDecoder(r).Decode(&data)
 	return data, err
@@ -338,6 +339,6 @@ type JSONTargetDecoder struct{}
 
 // Encode implements the necessary logic to use json for encoding to provided
 // target of type interface{}.
-func (JSONTargetDecoder) Decode(r io.Reader, data interface{}) error {
+func (JSONTargetDecoder) Decode(ctx context.Context, r io.Reader, data interface{}) error {
 	return json.NewDecoder(r).Decode(data)
 }

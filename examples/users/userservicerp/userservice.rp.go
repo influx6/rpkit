@@ -14,9 +14,18 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/gokit/rpkit/examples/users"
 	
+)
+
+var (
+    bytePool = sync.Pool{
+        New: func() interface{} {
+            return bytes.NewBuffer(make([]byte, 0, 1024))
+        },
+    }
 )
 
 const (
@@ -60,24 +69,29 @@ var (
 // Context Keys, Setters And Getters
 //****************************************************************************
 
+type contextKeyType string
+
 // sets of context keys used by the package.
 const (
-	contextCustomHeaderKey = "rp:custom:header"
-	contextRequestKey = "rp:request"
-	contextRequestMethodKey = "rp:request:method"
-	contextRequestHeaderKey = "rp:request:header"
-	contextResponseWriterKey = "rp:response:writer"
-	contextServiceNameKey = "rp:service:name"
-	contextServicePathKey = "rp:service:path"
-	contextServicePackageKey = "rp:service:package"
-	contextServicePackageNameKey = "rp:service:package:name"
-	contextServiceSourcePackageKey = "rp:service:source:path"
-	contextServiceSourcePackageNameKey = "rp:service:source:package"
-	contextServiceMethodNameKey = "rp:service:method:name"
-	contextServiceMethodPathKey = "rp:service:method:path"
-	contextServiceMethodRouteKey = "rp:service:method:route"
-	contextClientRequestURLKey = "rp:client:request:url"
-	contextRequestTransportKey = "rp:request:transport"
+	contextCustomHeaderKey = contextKeyType("rp:custom:header")
+	contextRequestKey = contextKeyType("rp:request")
+	contextRequestMethodKey = contextKeyType("rp:request:method")
+	contextRequestContentTypeKey = contextKeyType("rp:request:content:type")
+	contextRequestAcceptsKey = contextKeyType("rp:request:accepts:types")
+	contextRequestHeaderKey = contextKeyType("rp:request:header")
+	contextResponseWriterKey = contextKeyType("rp:response:writer")
+	contextResponseEncodedAsKey = contextKeyType("rp:response:encoded:as")
+	contextServiceNameKey = contextKeyType("rp:service:name")
+	contextServicePathKey = contextKeyType("rp:service:path")
+	contextServicePackageKey = contextKeyType("rp:service:package")
+	contextServicePackageNameKey = contextKeyType("rp:service:package:name")
+	contextServiceSourcePackageKey = contextKeyType("rp:service:source:path")
+	contextServiceSourcePackageNameKey = contextKeyType("rp:service:source:package")
+	contextServiceMethodNameKey = contextKeyType("rp:service:method:name")
+	contextServiceMethodPathKey = contextKeyType("rp:service:method:path")
+	contextServiceMethodRouteKey = contextKeyType("rp:service:method:route")
+	contextClientRequestURLKey = contextKeyType("rp:client:request:url")
+	contextRequestTransportKey = contextKeyType("rp:request:transport")
 )
 
 // CtxRequestTransport retrieves if any set RequestTransport string from context.
@@ -236,6 +250,45 @@ func WithResponseWriter(ctx context.Context, w http.ResponseWriter) context.Cont
 	return context.WithValue(ctx, contextResponseWriterKey, w)
 }
 
+// WithResponseEncodedAs sets the giving encoding type used to write to response into context.
+func WithResponseEncodedAs(ctx context.Context, c string) context.Context {
+	return context.WithValue(ctx, contextResponseEncodedAsKey, c)
+}
+
+// CtxResponseEncodedAs retrieves the Response encoding value from the context.
+func CtxResponseEncodedAs(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextResponseEncodedAsKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithAcceptsType sets the giving accepts type for associated context.
+func WithAcceptsType(ctx context.Context, c string) context.Context {
+	return context.WithValue(ctx, contextRequestAcceptsKey, c)
+}
+
+// CtxAccepts retrieves the Accepts value from the http.Request.
+func CtxAccepts(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextRequestAcceptsKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
+// WithContentType sets the giving content type for associated context.
+func WithContentType(ctx context.Context, c string) context.Context {
+	return context.WithValue(ctx, contextRequestContentTypeKey, c)
+}
+
+// CtxRequestContentType retrieves if any set http.Request content type from context.
+func CtxRequestContentType(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextRequestContentTypeKey).(string); ok {
+		return item, nil
+	}
+	return "", ErrNotInContext
+}
+
 // CtxRequestMethod retrieves if any set http.Request.Method string from context.
 func CtxRequestMethod(ctx context.Context) (string, error) {
 	if item, ok := ctx.Value(contextRequestMethodKey).(string); ok {
@@ -373,7 +426,7 @@ type GetMethodContract interface{
 // GetEncoder defines a interface which expose a single method to encode the response
 // returned by GetMethodContract.Get.
 type GetEncoder interface{
-	Encode(io.Writer, int) error
+	Encode(context.Context, io.Writer, int) error
 }
 
 // GetMethodService defines the returned signature by the ServiceGet
@@ -392,7 +445,8 @@ func ServeGetMethod(provider GetMethodContract, encoder GetEncoder) GetMethodSer
 		if err != nil {
 			return err
 		}
-		return encoder.Encode(w, res)
+
+		return encoder.Encode(ctx, w, res)
 	}
 }
 
@@ -404,7 +458,7 @@ type GetClientContract interface {
 // GetClientDecoder defines a interface which expose a single method to decode the response
 // returned by GetClientContract.Get.
 type GetClientDecoder interface{
-	Decode(io.Reader) (int, error)
+	Decode(context.Context, io.Reader) (int, error)
 }
 
 // NewGetMethodClient returns a new GetMethodContract it relies on
@@ -507,7 +561,7 @@ func (imp implGetClient) Get(var1 context.Context) (int,error){
 		return result, ErrServerRejectedRequest
 	}
 
-	result, err = imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(var1, res.Body)
 	if err != nil {
 		return result, err
 	}
@@ -543,6 +597,8 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx = WithRequest(ctx, r)
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
 	ctx = WithServiceName(ctx, BaseServiceName)
@@ -751,7 +807,7 @@ type GetUsersMethodContract interface{
 // GetUsersEncoder defines a interface which expose a single method to encode the response
 // returned by GetUsersMethodContract.GetUsers.
 type GetUsersEncoder interface{
-	Encode(io.Writer, users.User) error
+	Encode(context.Context, io.Writer, users.User) error
 }
 
 // GetUsersMethodService defines the returned signature by the ServiceGetUsers
@@ -767,7 +823,7 @@ func ServeGetUsersMethod(provider GetUsersMethodContract, encoder GetUsersEncode
 		
 		res := provider.GetUsers(ctx)
 		
-		return encoder.Encode(w, res)
+		return encoder.Encode(ctx, w, res)
 	}
 }
 
@@ -779,7 +835,7 @@ type GetUsersClientContract interface {
 // GetUsersClientDecoder defines a interface which expose a single method to decode the response
 // returned by GetUsersClientContract.GetUsers.
 type GetUsersClientDecoder interface{
-	Decode(io.Reader) (users.User, error)
+	Decode(context.Context, io.Reader) (users.User, error)
 }
 
 // NewGetUsersMethodClient returns a new GetUsersMethodContract it relies on
@@ -881,7 +937,7 @@ func (imp implGetUsersClient) GetUsers(var1 context.Context) (users.User, error)
 		return result, ErrServerRejectedRequest
 	}
 
-	result, err = imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(var1, res.Body)
 	if err != nil {
 		return result, err
 	}
@@ -918,6 +974,8 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
 	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
 	ctx = WithRequestHeader(ctx, r.Header)
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
@@ -1127,13 +1185,13 @@ type CreateMethodContract interface{
 // CreateDecoder defines a interface which expose a single method to decode the request data
 // expected by CreateMethodContract.Create.
 type CreateDecoder interface{
-	Decode(io.Reader) (users.NewUser, error)
+	Decode(context.Context, io.Reader) (users.NewUser, error)
 }
 
 // CreateEncoder defines a interface which expose a single method to encode the response
 // returned by CreateMethodContract.Create.
 type CreateEncoder interface{
-	Encode(io.Writer, users.User) error
+	Encode(context.Context, io.Writer, users.User) error
 }
 
 // CreateMethodService defines the returned signature by the ServiceCreate
@@ -1146,7 +1204,7 @@ type CreateMethodService func(context.Context, io.Writer, io.Reader) error
 // behaviour of method as a service.
 func ServeCreateMethod(provider CreateMethodContract, encoder CreateEncoder, decoder CreateDecoder) CreateMethodService {
 	return func(ctx context.Context, w io.Writer, r io.Reader) error {
-		input, err := decoder.Decode(r)
+		input, err := decoder.Decode(ctx, r)
 		if err != nil {
 			return err
 		}
@@ -1158,20 +1216,20 @@ func ServeCreateMethod(provider CreateMethodContract, encoder CreateEncoder, dec
 			return err
 		}
 
-		return encoder.Encode(w, res)
+		return encoder.Encode(ctx, w, res)
 	}
 }
 
 // CreateClientEncoder defines a interface which expose a single method to encode the request
 // data sent by CreateClientContract.Create.
 type CreateClientEncoder interface{
-	Encode(io.Writer, users.NewUser) error
+	Encode(context.Context, io.Writer, users.NewUser) error
 }
 
 // CreateClientDecoder defines a interface which expose a single method to decode the response
 // returned by CreateClientContract.Create.
 type CreateClientDecoder interface{
-	Decode(io.Reader) (users.User, error)
+	Decode(context.Context, io.Reader) (users.User, error)
 }
 
 // CreateClientContract defines a contract interface for clients to make request to CreateServer.
@@ -1224,12 +1282,13 @@ func (imp implCreateClient) Create(var1 context.Context,var2 users.NewUser) (use
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
 
 	var result users.User
-	var body bytes.Buffer
-	if err := imp.encoder.Encode(&body, var2); err != nil {
+	body := bytePool.Get().(*bytes.Buffer)
+	defer bytePool.Put(body)
+	if err := imp.encoder.Encode(var1, body, var2); err != nil {
 		return result, err
 	}
 
-     req, err := http.NewRequest("POST", targetURL.String(), &body)
+     req, err := http.NewRequest("POST", targetURL.String(), body)
       if err != nil {
            return result, err
       }
@@ -1285,7 +1344,7 @@ func (imp implCreateClient) Create(var1 context.Context,var2 users.NewUser) (use
 		return result,ErrServerRejectedRequest
 	}
 
-	result, err = imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(var1, res.Body)
 	if err != nil {
 		return result, err
 	}
@@ -1326,6 +1385,8 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	ctx = WithCustomHeader(ctx, impl.headers)
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -1531,13 +1592,13 @@ type GetByMethodContract interface{
 // GetByDecoder defines a interface which expose a single method to decode the request data
 // expected by GetByMethodContract.GetBy.
 type GetByDecoder interface{
-	Decode(io.Reader) (string, error)
+	Decode(context.Context, io.Reader) (string, error)
 }
 
 // GetByEncoder defines a interface which expose a single method to encode the response
 // returned by GetByMethodContract.GetBy.
 type GetByEncoder interface{
-	Encode(io.Writer, int) error
+	Encode(context.Context, io.Writer, int) error
 }
 
 // GetByMethodService defines the returned signature by the ServiceGetBy
@@ -1550,7 +1611,7 @@ type GetByMethodService func(context.Context, io.Writer, io.Reader) error
 // behaviour of method as a service.
 func ServeGetByMethod(provider GetByMethodContract, encoder GetByEncoder, decoder GetByDecoder) GetByMethodService {
 	return func(ctx context.Context, w io.Writer, r io.Reader) error {
-		input, err := decoder.Decode(r)
+		input, err := decoder.Decode(ctx, r)
 		if err != nil {
 			return err
 		}
@@ -1562,20 +1623,20 @@ func ServeGetByMethod(provider GetByMethodContract, encoder GetByEncoder, decode
 			return err
 		}
 
-		return encoder.Encode(w, res)
+		return encoder.Encode(ctx, w, res)
 	}
 }
 
 // GetByClientEncoder defines a interface which expose a single method to encode the request
 // data sent by GetByClientContract.GetBy.
 type GetByClientEncoder interface{
-	Encode(io.Writer, string) error
+	Encode(context.Context, io.Writer, string) error
 }
 
 // GetByClientDecoder defines a interface which expose a single method to decode the response
 // returned by GetByClientContract.GetBy.
 type GetByClientDecoder interface{
-	Decode(io.Reader) (int, error)
+	Decode(context.Context, io.Reader) (int, error)
 }
 
 // GetByClientContract defines a contract interface for clients to make request to GetByServer.
@@ -1628,12 +1689,13 @@ func (imp implGetByClient) GetBy(var1 context.Context,var2 string) (int,error){
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
 
 	var result int
-	var body bytes.Buffer
-	if err := imp.encoder.Encode(&body, var2); err != nil {
+	body := bytePool.Get().(*bytes.Buffer)
+	defer bytePool.Put(body)
+	if err := imp.encoder.Encode(var1, body, var2); err != nil {
 		return result, err
 	}
 
-     req, err := http.NewRequest("POST", targetURL.String(), &body)
+     req, err := http.NewRequest("POST", targetURL.String(), body)
       if err != nil {
            return result, err
       }
@@ -1689,7 +1751,7 @@ func (imp implGetByClient) GetBy(var1 context.Context,var2 string) (int,error){
 		return result,ErrServerRejectedRequest
 	}
 
-	result, err = imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(var1, res.Body)
 	if err != nil {
 		return result, err
 	}
@@ -1730,6 +1792,8 @@ func (impl implGetByHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx = WithCustomHeader(ctx, impl.headers)
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -1935,13 +1999,13 @@ type CreateUserMethodContract interface{
 // CreateUserDecoder defines a interface which expose a single method to decode the request data
 // expected by CreateUserMethodContract.CreateUser.
 type CreateUserDecoder interface{
-	Decode(io.Reader) (users.NewUser, error)
+	Decode(context.Context, io.Reader) (users.NewUser, error)
 }
 
 // CreateUserEncoder defines a interface which expose a single method to encode the response
 // returned by CreateUserMethodContract.CreateUser.
 type CreateUserEncoder interface{
-	Encode(io.Writer, users.User) error
+	Encode(context.Context, io.Writer, users.User) error
 }
 
 // CreateUserMethodService defines the returned signature by the ServiceCreateUser
@@ -1954,7 +2018,7 @@ type CreateUserMethodService func(context.Context, io.Writer, io.Reader) error
 // behaviour of method as a service.
 func ServeCreateUserMethod(provider CreateUserMethodContract, encoder CreateUserEncoder, decoder CreateUserDecoder) CreateUserMethodService {
 	return func(ctx context.Context, w io.Writer, r io.Reader) error {
-		input, err := decoder.Decode(r)
+		input, err := decoder.Decode(ctx, r)
 		if err != nil {
 			return err
 		}
@@ -1966,20 +2030,20 @@ func ServeCreateUserMethod(provider CreateUserMethodContract, encoder CreateUser
 			return err
 		}
 
-		return encoder.Encode(w, res)
+		return encoder.Encode(ctx, w, res)
 	}
 }
 
 // CreateUserClientEncoder defines a interface which expose a single method to encode the request
 // data sent by CreateUserClientContract.CreateUser.
 type CreateUserClientEncoder interface{
-	Encode(io.Writer, users.NewUser) error
+	Encode(context.Context, io.Writer, users.NewUser) error
 }
 
 // CreateUserClientDecoder defines a interface which expose a single method to decode the response
 // returned by CreateUserClientContract.CreateUser.
 type CreateUserClientDecoder interface{
-	Decode(io.Reader) (users.User, error)
+	Decode(context.Context, io.Reader) (users.User, error)
 }
 
 // CreateUserClientContract defines a contract interface for clients to make request to CreateUserServer.
@@ -2081,14 +2145,14 @@ func (imp implCreateUserClient) CreateUser(ctx context.Context, var1 users.NewUs
 
 	if requestRedirected(res) {
 		jsonErr, err := loadJSONError(res.Body)
-	   if err == nil {
-		return result, jsonErr
+		if err == nil {
+			return result, jsonErr
 	    }
 	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerRejectedRequest
 	}
 
-	result, err = imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(ctx, res.Body)
 	if err != nil {
 		return result, err
 	}
@@ -2128,6 +2192,8 @@ func (impl implCreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	ctx = WithCustomHeader(ctx, impl.headers)
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -2333,13 +2399,13 @@ type GetUserMethodContract interface{
 // GetUserDecoder defines a interface which expose a single method to decode the request data
 // expected by GetUserMethodContract.GetUser.
 type GetUserDecoder interface{
-	Decode(io.Reader) (int, error)
+	Decode(context.Context, io.Reader) (int, error)
 }
 
 // GetUserEncoder defines a interface which expose a single method to encode the response
 // returned by GetUserMethodContract.GetUser.
 type GetUserEncoder interface{
-	Encode(io.Writer, users.User) error
+	Encode(context.Context, io.Writer, users.User) error
 }
 
 // GetUserMethodService defines the returned signature by the ServiceGetUser
@@ -2352,7 +2418,7 @@ type GetUserMethodService func(context.Context, io.Writer, io.Reader) error
 // behaviour of method as a service.
 func ServeGetUserMethod(provider GetUserMethodContract, encoder GetUserEncoder, decoder GetUserDecoder) GetUserMethodService {
 	return func(ctx context.Context, w io.Writer, r io.Reader) error {
-		input, err := decoder.Decode(r)
+		input, err := decoder.Decode(ctx, r)
 		if err != nil {
 			return err
 		}
@@ -2364,20 +2430,20 @@ func ServeGetUserMethod(provider GetUserMethodContract, encoder GetUserEncoder, 
 			return err
 		}
 
-		return encoder.Encode(w, res)
+		return encoder.Encode(ctx, w, res)
 	}
 }
 
 // GetUserClientEncoder defines a interface which expose a single method to encode the request
 // data sent by GetUserClientContract.GetUser.
 type GetUserClientEncoder interface{
-	Encode(io.Writer, int) error
+	Encode(context.Context, io.Writer, int) error
 }
 
 // GetUserClientDecoder defines a interface which expose a single method to decode the response
 // returned by GetUserClientContract.GetUser.
 type GetUserClientDecoder interface{
-	Decode(io.Reader) (users.User, error)
+	Decode(context.Context, io.Reader) (users.User, error)
 }
 
 // GetUserClientContract defines a contract interface for clients to make request to GetUserServer.
@@ -2479,14 +2545,14 @@ func (imp implGetUserClient) GetUser(ctx context.Context, var1 int) (users.User,
 
 	if requestRedirected(res) {
 		jsonErr, err := loadJSONError(res.Body)
-	   if err == nil {
-		return result, jsonErr
+		if err == nil {
+			return result, jsonErr
 	    }
 	    log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
 		return result,ErrServerRejectedRequest
 	}
 
-	result, err = imp.decoder.Decode(res.Body)
+	result, err = imp.decoder.Decode(ctx, res.Body)
 	if err != nil {
 		return result, err
 	}
@@ -2526,6 +2592,8 @@ func (impl implGetUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	ctx = WithCustomHeader(ctx, impl.headers)
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)

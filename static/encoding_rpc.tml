@@ -4,6 +4,7 @@
 import (
 	"encoding/json"
 	"errors"
+	"context"
 	"io"
 
 	{{if .UsesInternal}}{{quote .Pkg.Path}}{{end}}
@@ -25,19 +26,19 @@ var (
 // Encoder defines an interface representing a generic encoder which
 // expects a interface{} type has it's encoding target.
 type Encoder interface{
-	Encode(io.Writer, interface{}) error
+	Encode(context.Context, io.Writer, interface{}) error
 }
 
 // Decoder defines an interface representing a generic decoder which
 // returning a interface{} type has it's response.
 type Decoder interface{
-	Decode(io.Reader) (interface{}, error)
+	Decode(context.Context, io.Reader) (interface{}, error)
 }
 
 // TargetDecoder defines an interface representing a target decoder which
 // expects a type to decode into.
 type TargetDecoder interface{
-	Decode(io.Reader, interface{}) error
+	Decode(context.Context, io.Reader, interface{}) error
 }
 
 {{range $name, $arg := .EncodingArgs}}
@@ -50,25 +51,25 @@ type TargetDecoder interface{
 // {{getTypeName $name}}TargetEncoder implements a encoder for the {{$name}} type
 // using a provided function.
 type {{getTypeName $name}}TargetEncoder struct {
-	EncoderFunc func(io.Writer, {{$name}}) error
+	EncoderFunc func(context.Context, io.Writer, {{$name}}) error
 }
 
 // Encode implements the encoding function for type {{$name}} used in {{$ServiceName}} by
 // calling the underline encoding function to handle the work.
-func (td {{getTypeName $name}}TargetEncoder) Encode(w io.Writer, payload {{ $name }}) error {
-	return td.EncoderFunc(w, payload)
+func (td {{getTypeName $name}}TargetEncoder) Encode(ctx context.Context, w io.Writer, payload {{ $name }}) error {
+	return td.EncoderFunc(ctx, w, payload)
 }
 
 // {{getTypeName $name}}TargetDecoder implements a decoder for the {{$name}} type
 // using a provided function.
 type {{getTypeName $name}}TargetDecoder struct {
-	DecoderFunc func(io.Reader) ({{$name}}, error)
+	DecoderFunc func(context.Context,io.Reader) ({{$name}}, error)
 }
 
 // Decode implements the decoding function for type {{$name}} used in {{$ServiceName}} by
 // calling the underline decoding function to handle the work.
-func (td {{getTypeName $name}}TargetDecoder) Decode(r io.Reader) ({{ $name }}, error) {
-	return td.DecoderFunc(r)
+func (td {{getTypeName $name}}TargetDecoder) Decode(ctx context.Context, r io.Reader) ({{ $name }}, error) {
+	return td.DecoderFunc(ctx, r)
 }
 
 //****************************************************************************
@@ -84,8 +85,8 @@ type {{getTypeName $name}}TypeEncoder struct {
 
 // Encode implements the encode function for type {{$name}} used in {{$ServiceName}} by
 // calling the underline Encoder to handle the work.
-func (en {{getTypeName $name}}TypeEncoder) Encode(w io.Writer, payload {{ $name }}) error {
-	return en.Encoder.Encode(w, payload)
+func (en {{getTypeName $name}}TypeEncoder) Encode(ctx context.Context, w io.Writer, payload {{ $name }}) error {
+	return en.Encoder.Encode(ctx, w, payload)
 }
 
 {{if $arg.StructObject }}
@@ -96,9 +97,9 @@ type {{getTypeName $name}}TypeDecoder struct {
 
 // Decode implements the decode function for type {{$name}} used in {{$ServiceName}} by
 // calling the underline Decoder to handle the work.
-func (td {{getTypeName $name}}TypeDecoder) Decode(r io.Reader) ({{ $name }}, error) { {{$isPointer := hasPrefix $name "*"}} {{$noPointerName := trimPrefix $name "*"}}
+func (td {{getTypeName $name}}TypeDecoder) Decode(ctx context.Context,r io.Reader) ({{ $name }}, error) { {{$isPointer := hasPrefix $name "*"}} {{$noPointerName := trimPrefix $name "*"}}
 	var res {{$noPointerName}}
-	err := td.Decoder.Decode(r, &res)
+	err := td.Decoder.Decode(ctx, r, &res)
 	return {{if $isPointer}}&res{{else}}res{{end}}, err
 }
 {{else}}
@@ -109,8 +110,8 @@ type {{getTypeName $name}}TypeDecoder struct {
 
 // Decode implements the decode function for type {{$name}} used in {{$ServiceName}} by
 // calling the underline Decoder to handle the work.
-func (td {{getTypeName $name}}TypeDecoder) Decode(r io.Reader) ({{ $name }}, error) {
-	recs, err := td.Decoder.Decode(r)
+func (td {{getTypeName $name}}TypeDecoder) Decode(ctx context.Context,r io.Reader) ({{ $name }}, error) {
+	recs, err := td.Decoder.Decode(ctx, r)
 	if err != nil {
 		return recs.({{$name}}), err
 	}
@@ -136,7 +137,7 @@ func (td {{getTypeName $name}}TypeDecoder) Decode(r io.Reader) ({{ $name }}, err
 type JSONEncoder struct{}
 
 // Encode implements the necessary logic to use json for encoding.
-func (JSONEncoder) Encode(w io.Writer, payload interface{}) error {
+func (JSONEncoder) Encode(ctx context.Context,w io.Writer, payload interface{}) error {
 	return json.NewEncoder(w).Encode(payload)
 }
 
@@ -145,7 +146,7 @@ func (JSONEncoder) Encode(w io.Writer, payload interface{}) error {
 type JSONDecoder struct{}
 
 // Encode implements the necessary logic to use json for encoding.
-func (JSONDecoder) Decode(r io.Reader) (interface{}, error) {
+func (JSONDecoder) Decode(ctx context.Context,r io.Reader) (interface{}, error) {
 	var data interface{}
 	err := json.NewDecoder(r).Decode(&data)
 	return data, err
@@ -157,6 +158,6 @@ type JSONTargetDecoder struct{}
 
 // Encode implements the necessary logic to use json for encoding to provided
 // target of type interface{}.
-func (JSONTargetDecoder) Decode(r io.Reader, data interface{}) error {
+func (JSONTargetDecoder) Decode(ctx context.Context, r io.Reader, data interface{}) error {
 	return json.NewDecoder(r).Decode(data)
 }

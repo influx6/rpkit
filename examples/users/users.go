@@ -7,8 +7,10 @@ type NewUser struct {
 }
 
 type User struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID   int     `json:"id"`
+	Name string  `json:"name"`
+	Addr string  `json:"addr"`
+	Cid  float64 `json:"cid"`
 }
 
 //@rp(js:server, js:client)

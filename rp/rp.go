@@ -21,8 +21,8 @@ func InterfaceRP(toPackage string, an ast.AnnotationDeclaration, in ast.Interfac
 	jsPackageName := fmt.Sprintf("%srpjsc", strings.ToLower(in.Object.Name.Name))
 	jsServerPackageName := fmt.Sprintf("%srpjss", strings.ToLower(in.Object.Name.Name))
 	packageFileName := fmt.Sprintf("%s.rp.go", strings.ToLower(in.Object.Name.Name))
-	jsPackageFileName := fmt.Sprintf("%s.client.rp.js", strings.ToLower(in.Object.Name.Name))
-	jsServerPackageFileName := fmt.Sprintf("%s.server.rp.js", strings.ToLower(in.Object.Name.Name))
+	//jsPackageFileName := fmt.Sprintf("%s.client.rp.js", strings.ToLower(in.Object.Name.Name))
+	//jsServerPackageFileName := fmt.Sprintf("%s.server.rp.js", strings.ToLower(in.Object.Name.Name))
 	packagePath := join(toPackage, packageName)
 
 	sections := strings.Split(strings.TrimSuffix(declr.Path, "/"), "/")
@@ -316,7 +316,7 @@ methodLoop:
 	packageJSClient := gen.Block(
 		gen.SourceTextWith(
 			"rpkit:js_package",
-			string(static.MustReadFile("interface_rp_js.tml", true)),
+			string(static.MustReadFile("interface_rp_js_client.tml", true)),
 			templFuncs,
 			binding,
 		),
@@ -325,7 +325,7 @@ methodLoop:
 	packageJSServer := gen.Block(
 		gen.SourceTextWith(
 			"rpkit:js_package",
-			string(static.MustReadFile("interface_rp_js.tml", true)),
+			string(static.MustReadFile("interface_rp_js_server.tml", true)),
 			templFuncs,
 			binding,
 		),
@@ -384,10 +384,22 @@ methodLoop:
 			string(static.MustReadFile("jsbundle/config/webpack.config.web.js", true)),
 		),
 	)
-
-	wpConfigNode := gen.Block(
-		gen.Text(
+	
+	wpServerConfigNode := gen.Block(
+		gen.SourceTextWith(
+			"rpkit:webpack_config_node_js",
 			string(static.MustReadFile("jsbundle/config/webpack.config.node.js", true)),
+			templFuncs,
+			binding,
+		),
+	)
+
+	wpClientConfigNode := gen.Block(
+		gen.SourceTextWith(
+			"rpkit:webpack_config_node_js",
+			string(static.MustReadFile("jsbundle/config/webpack.config.node.client.js", true)),
+			templFuncs,
+			binding,
 		),
 	)
 
@@ -420,7 +432,7 @@ methodLoop:
 		{
 			Dir:      filepath.Join(jsServerPackageName, "config"),
 			FileName: "webpack.config.node.js",
-			Writer:   wpConfigNode,
+			Writer:   wpServerConfigNode,
 		},
 		{
 			Dir:      filepath.Join(jsServerPackageName, "config"),
@@ -432,8 +444,8 @@ methodLoop:
 			Writer:   wpConfigPre,
 		},
 		{
-			Dir:      jsServerPackageName,
-			FileName: jsServerPackageFileName,
+			Dir:      filepath.Join(jsServerPackageName, "src"),
+			FileName: "app.js",
 			Writer:   packageJSServer,
 		},
 	}
@@ -467,7 +479,7 @@ methodLoop:
 		{
 			Dir:      filepath.Join(jsPackageName, "config"),
 			FileName: "webpack.config.node.js",
-			Writer:   wpConfigNode,
+			Writer:   wpClientConfigNode,
 		},
 		{
 			Dir:      filepath.Join(jsPackageName, "config"),
@@ -479,8 +491,8 @@ methodLoop:
 			Writer:   wpConfigPre,
 		},
 		{
-			Dir:      jsPackageName,
-			FileName: jsPackageFileName,
+			Dir:      filepath.Join(jsPackageName, "src"),
+			FileName: "app.js",
 			Writer:   packageJSClient,
 		},
 	}

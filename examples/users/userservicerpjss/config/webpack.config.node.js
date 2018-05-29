@@ -29,7 +29,7 @@ module.exports = pre.Build({
     output: {
         path: destdir,
         filename: "index.js",
-        library: "starterkitjs",
+        library: "userservicerpjss",
         libraryTarget: "umd", // can also be 'window', 'this', 'var' see https://webpack.js.org/guides/author-libraries/.
     },
     module: {
