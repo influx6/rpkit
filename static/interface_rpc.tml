@@ -1297,8 +1297,8 @@ type {{$method.Name}}ClientDecoder interface{
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
-	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, decoder, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which
@@ -1743,8 +1743,8 @@ type {{$method.Name}}ClientDecoder interface{
 
 // New{{$method.Name}}MethodClient returns a new {{$method.Name}}MethodContract it relies on
 // New{{$method.Name}}MethodContractClient.
-func New{{$method.Name}}MethodClient(addr string, client HTTPClient, encoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
-	return New{{$method.Name}}MethodContractClient(addr, client, encoder, nil, nil)
+func New{{$method.Name}}MethodClient(addr string, client HTTPClient, decoder {{$method.Name}}ClientDecoder) ({{$method.Name}}ClientContract, error) {
+	return New{{$method.Name}}MethodContractClient(addr, client, decoder, nil, nil)
 }
 
 // New{{$method.Name}}MethodContractClient returns a new {{$method.Name}}MethodContract implementation, which

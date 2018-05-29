@@ -651,7 +651,7 @@ export const CreateUserContractSource = `type CreateUserMethodContract interface
 // return a default object containing default field values of return value of
 // CreateUser method.
 export function CreateUserMethodUserFactory(){
-    return JSON.parse("{\n\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0,\n\n    \"name\":\t\"\"\n\n}");
+    return JSON.parse("{\n\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0\n\n}");
 }
 
 

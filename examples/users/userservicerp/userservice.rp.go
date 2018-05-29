@@ -463,8 +463,8 @@ type GetClientDecoder interface{
 
 // NewGetMethodClient returns a new GetMethodContract it relies on
 // NewGetMethodContractClient.
-func NewGetMethodClient(addr string, client HTTPClient, encoder GetClientDecoder) (GetClientContract, error) {
-	return NewGetMethodContractClient(addr, client, encoder, nil, nil)
+func NewGetMethodClient(addr string, client HTTPClient, decoder GetClientDecoder) (GetClientContract, error) {
+	return NewGetMethodContractClient(addr, client, decoder, nil, nil)
 }
 
 // NewGetMethodContractClient returns a new GetMethodContract implementation, which
@@ -840,8 +840,8 @@ type GetUsersClientDecoder interface{
 
 // NewGetUsersMethodClient returns a new GetUsersMethodContract it relies on
 // NewGetUsersMethodContractClient.
-func NewGetUsersMethodClient(addr string, client HTTPClient, encoder GetUsersClientDecoder) (GetUsersClientContract, error) {
-	return NewGetUsersMethodContractClient(addr, client, encoder, nil, nil)
+func NewGetUsersMethodClient(addr string, client HTTPClient, decoder GetUsersClientDecoder) (GetUsersClientContract, error) {
+	return NewGetUsersMethodContractClient(addr, client, decoder, nil, nil)
 }
 
 // NewGetUsersMethodContractClient returns a new GetUsersMethodContract implementation, which
