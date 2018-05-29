@@ -74,13 +74,22 @@ type contextKeyType string
 // sets of context keys used by the package.
 const (
 	contextCustomHeaderKey = contextKeyType("rp:custom:header")
+	contextClientRequestURLKey = contextKeyType("rp:client:request:url")
+
+	contextRequestCookiesKey = contextKeyType("rp:request:cookies")
 	contextRequestKey = contextKeyType("rp:request")
 	contextRequestMethodKey = contextKeyType("rp:request:method")
 	contextRequestContentTypeKey = contextKeyType("rp:request:content:type")
 	contextRequestAcceptsKey = contextKeyType("rp:request:accepts:types")
 	contextRequestHeaderKey = contextKeyType("rp:request:header")
+	contextRequestTransportKey = contextKeyType("rp:request:transport")
+
+	contextResponseKey = contextKeyType("rp:response")
+	contextResponseCookiesKey = contextKeyType("rp:response:cookies")
 	contextResponseWriterKey = contextKeyType("rp:response:writer")
-	contextResponseEncodedAsKey = contextKeyType("rp:response:encoded:as")
+	contextResponseHeaderKey = contextKeyType("rp:response:header")
+	contextResponseContentTypeKey = contextKeyType("rp:response:content:type")
+
 	contextServiceNameKey = contextKeyType("rp:service:name")
 	contextServicePathKey = contextKeyType("rp:service:path")
 	contextServicePackageKey = contextKeyType("rp:service:package")
@@ -90,8 +99,6 @@ const (
 	contextServiceMethodNameKey = contextKeyType("rp:service:method:name")
 	contextServiceMethodPathKey = contextKeyType("rp:service:method:path")
 	contextServiceMethodRouteKey = contextKeyType("rp:service:method:route")
-	contextClientRequestURLKey = contextKeyType("rp:client:request:url")
-	contextRequestTransportKey = contextKeyType("rp:request:transport")
 )
 
 // CtxRequestTransport retrieves if any set RequestTransport string from context.
@@ -237,6 +244,45 @@ func WithCustomHeader(ctx context.Context, header http.Header) context.Context {
 	return context.WithValue(ctx, contextCustomHeaderKey, header)
 }
 
+// CtxResponseCookies retrieves if any set http.Cookies from http.Response in context.
+func CtxResponseCookies(ctx context.Context) ([]*http.Cookie, error) {
+	if item, ok := ctx.Value(contextResponseCookiesKey).([]*http.Cookie); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithResponseCookies sets the giving []*http.Cookies into context.
+func WithResponseCookies(ctx context.Context, w []*http.Cookie) context.Context {
+	return context.WithValue(ctx, contextResponseCookiesKey, w)
+}
+
+// CtxRequestCookies retrieves if any set http.Cookies from http.Request in context.
+func CtxRequestCookies(ctx context.Context) ([]*http.Cookie, error) {
+	if item, ok := ctx.Value(contextRequestCookiesKey).([]*http.Cookie); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithRequestCookies sets the giving []*http.Cookies into context.
+func WithRequestCookies(ctx context.Context, w []*http.Cookie) context.Context {
+	return context.WithValue(ctx, contextRequestCookiesKey, w)
+}
+
+// CtxResponse retrieves if any set http.Response from context.
+func CtxResponse(ctx context.Context) (*http.Response, error) {
+	if item, ok := ctx.Value(contextResponseKey).(*http.Response); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithResponse sets the giving http.Response into context.
+func WithResponse(ctx context.Context, w *http.Response) context.Context {
+	return context.WithValue(ctx, contextResponseKey, w)
+}
+
 // CtxResponseWriter retrieves if any set http.ResponseWriter from context.
 func CtxResponseWriter(ctx context.Context) (http.ResponseWriter, error) {
 	if item, ok := ctx.Value(contextResponseWriterKey).(http.ResponseWriter); ok {
@@ -250,34 +296,47 @@ func WithResponseWriter(ctx context.Context, w http.ResponseWriter) context.Cont
 	return context.WithValue(ctx, contextResponseWriterKey, w)
 }
 
-// WithResponseEncodedAs sets the giving encoding type used to write to response into context.
-func WithResponseEncodedAs(ctx context.Context, c string) context.Context {
-	return context.WithValue(ctx, contextResponseEncodedAsKey, c)
+// WithResponseContentType sets the giving content type for associated context.
+func WithResponseContentType(ctx context.Context, c string) context.Context {
+	return context.WithValue(ctx, contextResponseContentTypeKey, c)
 }
 
-// CtxResponseEncodedAs retrieves the Response encoding value from the context.
-func CtxResponseEncodedAs(ctx context.Context) (string, error) {
-	if item, ok := ctx.Value(contextResponseEncodedAsKey).(string); ok {
+// CtxResponseContentType retrieves if any set http.Response content type from context.
+func CtxResponseContentType(ctx context.Context) (string, error) {
+	if item, ok := ctx.Value(contextResponseContentTypeKey).(string); ok {
 		return item, nil
 	}
 	return "", ErrNotInContext
 }
 
-// WithAcceptsType sets the giving accepts type for associated context.
-func WithAcceptsType(ctx context.Context, c string) context.Context {
+// CtxResponseHeader retrieves if any set http.Response.Header http.Header from context.
+func CtxResponseHeader(ctx context.Context) (http.Header, error) {
+	if item, ok := ctx.Value(contextResponseHeaderKey).(http.Header); ok {
+		return item, nil
+	}
+	return nil, ErrNotInContext
+}
+
+// WithResponseHeader sets the giving http.Response.Header into context.
+func WithResponseHeader(ctx context.Context, header http.Header) context.Context {
+	return context.WithValue(ctx, contextResponseHeaderKey, header)
+}
+
+// WithRequestAcceptsType sets the giving accepts type for associated context.
+func WithRequestAcceptsType(ctx context.Context, c string) context.Context {
 	return context.WithValue(ctx, contextRequestAcceptsKey, c)
 }
 
-// CtxAccepts retrieves the Accepts value from the http.Request.
-func CtxAccepts(ctx context.Context) (string, error) {
+// CtxRequestAccepts retrieves the Accepts value from the http.Request.
+func CtxRequestAccepts(ctx context.Context) (string, error) {
 	if item, ok := ctx.Value(contextRequestAcceptsKey).(string); ok {
 		return item, nil
 	}
 	return "", ErrNotInContext
 }
 
-// WithContentType sets the giving content type for associated context.
-func WithContentType(ctx context.Context, c string) context.Context {
+// WithRequestContentType sets the giving content type for associated context.
+func WithRequestContentType(ctx context.Context, c string) context.Context {
 	return context.WithValue(ctx, contextRequestContentTypeKey, c)
 }
 
@@ -367,6 +426,9 @@ type JSONErrorResponse struct{
 
 // Error returns the underline error contents string.
 func (jse JSONErrorResponse) Error() string {
+    if encoded, err := json.Marshal(jse); err == nil {
+        return string(encoded)
+    }
 	return jse.Message + " : " + string(jse.Err)
 }
 
@@ -502,7 +564,7 @@ func (imp implGetClient) Get(var1 context.Context) (int,error){
 	var1 = WithRequestMethod(var1, "POST")
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
-	
+
 	var result int
 
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
@@ -521,10 +583,21 @@ func (imp implGetClient) Get(var1 context.Context) (int,error){
 		imp.actor(req)
 	}
 
+	var1 = WithRequest(var1, req)
+	var1 = WithRequestHeader(var1, req.Header)
+	var1 = WithRequestCookies(var1, req.Cookies())
+	var1 = WithRequestAcceptsType(var1, req.Header.Get("Accept"))
+	var1 = WithRequestContentType(var1, req.Header.Get("Content-Type"))
+
 	res, err := imp.client.Do(req)
 	if err != nil {
 		return result, err
 	}
+
+	var1 = WithResponse(var1, res)
+	var1 = WithResponseCookies(var1, res.Cookies())
+	var1 = WithResponseHeader(var1, res.Header)
+	var1 = WithResponseContentType(var1, res.Header.Get("Content-Type"))
 
 	defer res.Body.Close()
 
@@ -597,10 +670,12 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx = WithRequest(ctx, r)
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
-	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
-	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestCookies(ctx, r.Cookies())
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithResponseHeader(ctx, w.Header())
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -637,13 +712,13 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				w.Header().Add(key, item)
 			}
 		}
-		
+
 		if impl.hook != nil {
 			impl.hook.RequestAccepted(ctx)
 			impl.hook.RequestProcessed(ctx)
 			impl.hook.ResponsePrepared(ctx)
 		}
-		
+
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/users")
@@ -653,11 +728,11 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("X-Package-Interface", "users.UserService")
 
 		w.WriteHeader(http.StatusNoContent)
-		
+
 		if impl.hook != nil {
 			impl.hook.ResponseSent(ctx)
 		}
-		
+
 		return
 	}
 
@@ -666,7 +741,7 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+GetServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+GetServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "Get",
@@ -684,7 +759,7 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if impl.hook != nil {
 					impl.hook.RequestRejected(ctx)
 				}
-		
+
 				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
@@ -725,7 +800,7 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if impl.hook != nil {
 					impl.hook.RequestPanic(ctx, rerr)
 				}
-				
+
 				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
@@ -750,7 +825,7 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if impl.hook != nil {
 			impl.hook.RequestError(ctx,actionErr)
 		}
-		
+
 		jsonWriteError(w, ActionError,  http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -761,13 +836,13 @@ func (impl implGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
+
 	if impl.hook != nil {
 		impl.hook.ResponsePrepared(ctx)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	
+
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
 	}
@@ -793,7 +868,7 @@ var getusersServiceRoutePathURL = mustSimpleParseURL(GetUsersServiceRoutePath)
 
 // GetUsersContractSource contains the source version of expected method contract.
 const GetUsersContractSource = `type GetUsersMethodContract interface {
-	GetUsers(var1 context.Context)  users.User  
+	GetUsers(var1 context.Context)  []users.User  
 }
 `
 
@@ -801,13 +876,13 @@ const GetUsersContractSource = `type GetUsersMethodContract interface {
 // provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
 // establish a simple contract suitable for meeting the needs of said method.
 type GetUsersMethodContract interface{
-	GetUsers(var1 context.Context)  users.User  
+	GetUsers(var1 context.Context)  []users.User  
 }
 
 // GetUsersEncoder defines a interface which expose a single method to encode the response
 // returned by GetUsersMethodContract.GetUsers.
 type GetUsersEncoder interface{
-	Encode(context.Context, io.Writer, users.User) error
+	Encode(context.Context, io.Writer, []users.User) error
 }
 
 // GetUsersMethodService defines the returned signature by the ServiceGetUsers
@@ -829,13 +904,13 @@ func ServeGetUsersMethod(provider GetUsersMethodContract, encoder GetUsersEncode
 
 // GetUsersClientContract defines a contract interface for clients to make request to GetUsersServer.
 type GetUsersClientContract interface {
-	GetUsers(var1 context.Context) (users.User, error)
+	GetUsers(var1 context.Context) ([]users.User, error)
 }
 
 // GetUsersClientDecoder defines a interface which expose a single method to decode the response
 // returned by GetUsersClientContract.GetUsers.
 type GetUsersClientDecoder interface{
-	Decode(context.Context, io.Reader) (users.User, error)
+	Decode(context.Context, io.Reader) ([]users.User, error)
 }
 
 // NewGetUsersMethodClient returns a new GetUsersMethodContract it relies on
@@ -872,7 +947,7 @@ type implGetUsersClient struct {
 
 // GetUsers makes a request to the server's address with provided arguments and returns
 // response received from server.
-func (imp implGetUsersClient) GetUsers(var1 context.Context) (users.User, error){
+func (imp implGetUsersClient) GetUsers(var1 context.Context) ([]users.User, error){
 	// targetURL for the requests to be made.
 	targetURL := imp.rootURL.ResolveReference(getusersServiceRoutePathURL)
 	
@@ -880,7 +955,7 @@ func (imp implGetUsersClient) GetUsers(var1 context.Context) (users.User, error)
 	var1 = WithClientRequestURI(var1, targetURL.String())
 	var1 = WithRequestTransport(var1, "RPKIT:HTTP:CLIENT")
 
-	var result users.User
+	var result []users.User
 	req, err := http.NewRequest("POST", targetURL.String(), nil)
 	if err != nil {
 		return result, err
@@ -897,10 +972,21 @@ func (imp implGetUsersClient) GetUsers(var1 context.Context) (users.User, error)
 		imp.actor(req)
 	}
 
+	var1 = WithRequest(var1, req)
+	var1 = WithRequestCookies(var1, req.Cookies())
+	var1 = WithRequestHeader(var1, req.Header)
+	var1 = WithRequestAcceptsType(var1, req.Header.Get("Accept"))
+	var1 = WithRequestContentType(var1, req.Header.Get("Content-Type"))
+
 	res, err := imp.client.Do(req)
 	if err != nil {
 		return result, err
 	}
+
+	var1 = WithResponse(var1, res)
+	var1 = WithResponseCookies(var1, res.Cookies())
+	var1 = WithResponseHeader(var1, res.Header)
+	var1 = WithResponseContentType(var1, res.Header.Get("Content-Type"))
 
 	defer res.Body.Close()
 
@@ -911,7 +997,7 @@ func (imp implGetUsersClient) GetUsers(var1 context.Context) (users.User, error)
 	}
 
 	if requestFacedInternalIssues(res) {
-		jsonErr, err := loadJSONError(res.Body) 
+		jsonErr, err := loadJSONError(res.Body)
 	    if err == nil {
 		  return result, jsonErr
 	    }
@@ -974,9 +1060,11 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
 	ctx = WithRequestMethod(ctx, r.Method)
-	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
-	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestCookies(ctx, r.Cookies())
 	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithResponseHeader(ctx, w.Header())
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -1019,7 +1107,7 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			impl.hook.RequestProcessed(ctx)
 			impl.hook.ResponsePrepared(ctx)
 		}
-		
+
 		w.Header().Add("X-Agent", "RPKIT")
 		w.Header().Add("X-Service", BaseServiceName)
 		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/users")
@@ -1029,11 +1117,11 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		w.Header().Add("X-Package-Interface", "users.UserService")
 
 		w.WriteHeader(http.StatusNoContent)
-		
+
 		if impl.hook != nil {
 			impl.hook.ResponseSent(ctx)
 		}
-		
+
 		return
 	}
 
@@ -1042,7 +1130,7 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+GetUsersServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+GetUsersServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "GetUsers",
@@ -1060,7 +1148,7 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 				if impl.hook != nil {
 					impl.hook.RequestRejected(ctx)
 				}
-		
+
 				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
 				ErrInvalidContentType, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
@@ -1101,7 +1189,7 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 				if impl.hook != nil {
 					impl.hook.RequestPanic(ctx, rerr)
 				}
-				
+
 				derr := fmt.Errorf("panic err: %#v", rerr)
 				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
 					"package": "github.com/gokit/rpkit/examples/users",
@@ -1126,7 +1214,7 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		if impl.hook != nil {
 			impl.hook.RequestError(ctx, actionErr)
 		}
-		
+
 		jsonWriteError(w, ActionError,  http.StatusBadRequest, "method call returned err", actionErr, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
@@ -1137,13 +1225,13 @@ func (impl implGetUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		})
 		return
 	}
-	
+
 	if impl.hook != nil {
 		impl.hook.ResponsePrepared(ctx)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	
+
 	if impl.hook != nil {
 		impl.hook.ResponseSent(ctx)
 	}
@@ -1288,11 +1376,11 @@ func (imp implCreateClient) Create(var1 context.Context,var2 users.NewUser) (use
 		return result, err
 	}
 
-     req, err := http.NewRequest("POST", targetURL.String(), body)
-      if err != nil {
-           return result, err
-      }
-      req = req.WithContext(var1)
+    req, err := http.NewRequest("POST", targetURL.String(), body)
+    if err != nil {
+         return result, err
+    }
+    req = req.WithContext(var1)
 
 	if header, err := CtxCustomHeader(var1); err == nil {
 		for key, list := range header {
@@ -1304,10 +1392,21 @@ func (imp implCreateClient) Create(var1 context.Context,var2 users.NewUser) (use
 		imp.actor(req)
 	}
 
+	var1 = WithRequest(var1, req)
+	var1 = WithRequestCookies(var1, req.Cookies())
+	var1 = WithRequestHeader(var1, req.Header)
+	var1 = WithRequestAcceptsType(var1, req.Header.Get("Accept"))
+	var1 = WithRequestContentType(var1, req.Header.Get("Content-Type"))
+
 	res, err := imp.client.Do(req)
 	if err != nil {
 		return result,err
 	}
+
+	var1 = WithResponse(var1, res)
+	var1 = WithResponseCookies(var1, res.Cookies())
+	var1 = WithResponseHeader(var1, res.Header)
+	var1 = WithResponseContentType(var1, res.Header.Get("Content-Type"))
 
 	defer res.Body.Close()
 
@@ -1383,10 +1482,12 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	ctx = WithRequest(ctx, r)
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestCookies(ctx, r.Cookies())
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
-	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
-	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithResponseHeader(ctx, w.Header())
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -1451,7 +1552,7 @@ func (impl implCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+CreateServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+CreateServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "Create",
@@ -1695,11 +1796,11 @@ func (imp implGetByClient) GetBy(var1 context.Context,var2 string) (int,error){
 		return result, err
 	}
 
-     req, err := http.NewRequest("POST", targetURL.String(), body)
-      if err != nil {
-           return result, err
-      }
-      req = req.WithContext(var1)
+    req, err := http.NewRequest("POST", targetURL.String(), body)
+    if err != nil {
+         return result, err
+    }
+    req = req.WithContext(var1)
 
 	if header, err := CtxCustomHeader(var1); err == nil {
 		for key, list := range header {
@@ -1711,10 +1812,21 @@ func (imp implGetByClient) GetBy(var1 context.Context,var2 string) (int,error){
 		imp.actor(req)
 	}
 
+	var1 = WithRequest(var1, req)
+	var1 = WithRequestCookies(var1, req.Cookies())
+	var1 = WithRequestHeader(var1, req.Header)
+	var1 = WithRequestAcceptsType(var1, req.Header.Get("Accept"))
+	var1 = WithRequestContentType(var1, req.Header.Get("Content-Type"))
+
 	res, err := imp.client.Do(req)
 	if err != nil {
 		return result,err
 	}
+
+	var1 = WithResponse(var1, res)
+	var1 = WithResponseCookies(var1, res.Cookies())
+	var1 = WithResponseHeader(var1, res.Header)
+	var1 = WithResponseContentType(var1, res.Header.Get("Content-Type"))
 
 	defer res.Body.Close()
 
@@ -1790,10 +1902,12 @@ func (impl implGetByHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx = WithRequest(ctx, r)
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestCookies(ctx, r.Cookies())
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
-	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
-	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithResponseHeader(ctx, w.Header())
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -1858,7 +1972,7 @@ func (impl implGetByHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+GetByServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+GetByServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "GetBy",
@@ -2096,10 +2210,16 @@ func (imp implCreateUserClient) CreateUser(ctx context.Context, var1 users.NewUs
 	ctx = WithRequestTransport(ctx, "RPKIT:HTTP:CLIENT")
 
 	var result users.User
-	req, err := http.NewRequest("POST", targetURL.String(), nil)
-	if err != nil {
-		return result,err
+	body := bytePool.Get().(*bytes.Buffer)
+	defer bytePool.Put(body)
+	if err := imp.encoder.Encode(ctx, body, var1); err != nil {
+		return result, err
 	}
+
+    req, err := http.NewRequest("POST", targetURL.String(), body)
+    if err != nil {
+         return result, err
+    }
 	req = req.WithContext(ctx)
 
 	if header, err := CtxCustomHeader(ctx); err == nil {
@@ -2112,10 +2232,21 @@ func (imp implCreateUserClient) CreateUser(ctx context.Context, var1 users.NewUs
 		imp.actor(req)
 	}
 
+	ctx = WithRequest(ctx, req)
+	ctx = WithRequestHeader(ctx, req.Header)
+	ctx = WithRequestCookies(ctx, req.Cookies())
+	ctx = WithRequestAcceptsType(ctx, req.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, req.Header.Get("Content-Type"))
+
 	res, err := imp.client.Do(req)
 	if err != nil {
 		return result, err
 	}
+
+	ctx = WithResponse(ctx, res)
+	ctx = WithResponseCookies(ctx, res.Cookies())
+	ctx = WithResponseHeader(ctx, res.Header)
+	ctx = WithResponseContentType(ctx, res.Header.Get("Content-Type"))
 
 	defer res.Body.Close()
 
@@ -2190,10 +2321,12 @@ func (impl implCreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	ctx = WithRequest(ctx, r)
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestCookies(ctx, r.Cookies())
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
-	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
-	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithResponseHeader(ctx, w.Header())
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -2258,7 +2391,7 @@ func (impl implCreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+CreateUserServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+CreateUserServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "CreateUser",
@@ -2496,10 +2629,16 @@ func (imp implGetUserClient) GetUser(ctx context.Context, var1 int) (users.User,
 	ctx = WithRequestTransport(ctx, "RPKIT:HTTP:CLIENT")
 
 	var result users.User
-	req, err := http.NewRequest("POST", targetURL.String(), nil)
-	if err != nil {
-		return result,err
+	body := bytePool.Get().(*bytes.Buffer)
+	defer bytePool.Put(body)
+	if err := imp.encoder.Encode(ctx, body, var1); err != nil {
+		return result, err
 	}
+
+    req, err := http.NewRequest("POST", targetURL.String(), body)
+    if err != nil {
+         return result, err
+    }
 	req = req.WithContext(ctx)
 
 	if header, err := CtxCustomHeader(ctx); err == nil {
@@ -2512,10 +2651,21 @@ func (imp implGetUserClient) GetUser(ctx context.Context, var1 int) (users.User,
 		imp.actor(req)
 	}
 
+	ctx = WithRequest(ctx, req)
+	ctx = WithRequestHeader(ctx, req.Header)
+	ctx = WithRequestCookies(ctx, req.Cookies())
+	ctx = WithRequestAcceptsType(ctx, req.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, req.Header.Get("Content-Type"))
+
 	res, err := imp.client.Do(req)
 	if err != nil {
 		return result, err
 	}
+
+	ctx = WithResponse(ctx, res)
+	ctx = WithResponseCookies(ctx, res.Cookies())
+	ctx = WithResponseHeader(ctx, res.Header)
+	ctx = WithResponseContentType(ctx, res.Header.Get("Content-Type"))
 
 	defer res.Body.Close()
 
@@ -2590,10 +2740,12 @@ func (impl implGetUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	ctx = WithRequest(ctx, r)
 	ctx = WithResponseWriter(ctx, w)
 	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestCookies(ctx, r.Cookies())
 	ctx = WithRequestMethod(ctx, r.Method)
 	ctx = WithRequestHeader(ctx, r.Header)
-	ctx = WithAcceptsType(ctx, r.Header.Get("Accept"))
-	ctx = WithContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithResponseHeader(ctx, w.Header())
 	ctx = WithServiceName(ctx, BaseServiceName)
 	ctx = WithServicePath(ctx, MethodServiceName)
 	ctx = WithServicePackage(ctx, ServiceCodePath)
@@ -2658,7 +2810,7 @@ func (impl implGetUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			impl.hook.RequestRejected(ctx)
 		}
 
-		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to "+GetUserServiceRoutePath+" allowed", ErrInvalidRequestURI, map[string]interface{}{
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+GetUserServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
 			"package": "github.com/gokit/rpkit/examples/users",
 			"api_base": BaseServiceName,
 			"method": "GetUser",

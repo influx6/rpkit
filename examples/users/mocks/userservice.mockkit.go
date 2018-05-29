@@ -25,7 +25,7 @@ type UserServiceImpl struct{
     
     GetUserFunc func(var1 int) (users.User,error)
     
-    GetUsersFunc func(var1 context.Context) (users.User)
+    GetUsersFunc func(var1 context.Context) ([]users.User)
     
 }
 
@@ -67,7 +67,7 @@ func (impl UserServiceImpl) GetUser(var1 int) (users.User,error){
 
 // GetUsers implements the UserService.GetUsers method for UserService interface.
 // It calls the UserServiceImpl.GetUsersFunc field underneath.
-func (impl UserServiceImpl) GetUsers(var1 context.Context) (users.User){ 
+func (impl UserServiceImpl) GetUsers(var1 context.Context) ([]users.User){ 
     ret1 := impl.GetUsersFunc(var1)
     return ret1
 }

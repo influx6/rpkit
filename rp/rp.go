@@ -245,21 +245,40 @@ methodLoop:
 	templFuncs := gen.ToTemplateFuncs(
 		ast.ASTTemplatFuncs,
 		template.FuncMap{
-			"getTypeName": func(val string) string {
+			"getTypeName": func(val string, arg ast.ArgType) string {
+				if arg.MapType != nil {
+					if arg.IsReturn {
+						return fmt.Sprintf("%sMapOut", arg.Owner)
+					}
+					return fmt.Sprintf("%sMapIn", arg.Owner)
+				}
+
+				isSlice := strings.HasPrefix(val, "[]")
 				if parts := strings.Split(val, "."); len(parts) > 1 {
 					val = parts[1]
 				}
 
 				if len(val) == 1 {
 					if val == strings.ToLower(val) {
+						if isSlice {
+							return strings.ToUpper(val) + "Slice"
+						}
 						return strings.ToUpper(val)
 					}
 					return val
 				}
 
 				if val[:1] == strings.ToLower(val[:1]) {
+					if isSlice {
+						return strings.ToUpper(val[:1]) + val[1:] + "Slice"
+					}
 					return strings.ToUpper(val[:1]) + val[1:]
 				}
+
+				if isSlice {
+					return val + "Slice"
+				}
+
 				return val
 			},
 		},
@@ -384,7 +403,7 @@ methodLoop:
 			string(static.MustReadFile("jsbundle/config/webpack.config.web.js", true)),
 		),
 	)
-	
+
 	wpServerConfigNode := gen.Block(
 		gen.SourceTextWith(
 			"rpkit:webpack_config_node_js",

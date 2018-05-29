@@ -352,16 +352,16 @@ export const GetUsersServiceRoutePath = "/rpkit/users.UserService/GetUsers";
 
 // GetUsersContractSource contains the source version of expected method contract.
 export const GetUsersContractSource = `type GetUsersMethodContract interface {
-	GetUsers(var1 context.Context)  users.User  
+	GetUsers(var1 context.Context)  []users.User  
 }
 `;
 
 
-// GetUsersMethodUserFactory defines a function to
+// GetUsersMethod[]UserFactory defines a function to
 // return a default object containing default field values of return value of
 // GetUsers method.
-export function GetUsersMethodUserFactory(){
-    return JSON.parse("{\n\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0\n\n}");
+export function GetUsersMethod[]UserFactory(){
+    return JSON.parse("{\n\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\"\n\n}");
 }
 
 
@@ -651,7 +651,7 @@ export const CreateUserContractSource = `type CreateUserMethodContract interface
 // return a default object containing default field values of return value of
 // CreateUser method.
 export function CreateUserMethodUserFactory(){
-    return JSON.parse("{\n\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0\n\n}");
+    return JSON.parse("{\n\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0\n\n}");
 }
 
 

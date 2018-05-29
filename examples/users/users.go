@@ -21,5 +21,5 @@ type UserService interface {
 	GetBy(context.Context, string) (int, error)
 	CreateUser(NewUser) (User, error)
 	GetUser(int) (User, error)
-	GetUsers(context.Context) User
+	GetUsers(context.Context) []User
 }

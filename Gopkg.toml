@@ -27,7 +27,19 @@
 
 [[constraint]]
   branch = "master"
+  name = "github.com/gokit/assetkit"
+
+[[constraint]]
+  branch = "master"
   name = "github.com/influx6/faux"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/influx6/moz"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.1"
 
 [prune]
   go-tests = true

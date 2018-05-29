@@ -18,6 +18,94 @@ var (
 	ErrDecodedUnknownType = errors.New("decoder returns unknown type")
 )
 
+
+{{range $name, $arg := .EncodingArgs}}
+//****************************************************************************
+// {{$name}} Target Function Encoders / Decoders Implementations
+// Source: {{$Itr.Path}}
+// Used By: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}
+//****************************************************************************
+
+// {{getTypeName $name $arg}}TargetEncoder implements a encoder for the {{$name}} type
+// using a provided function.
+type {{getTypeName $name $arg}}TargetEncoder struct {
+	EncoderFunc func(context.Context, io.Writer, {{$name}}) error
+}
+
+// Encode implements the encoding function for type {{$name}} used in {{$ServiceName}} by
+// calling the underline encoding function to handle the work.
+func (td {{getTypeName $name $arg}}TargetEncoder) Encode(ctx context.Context, w io.Writer, payload {{ $name }}) error {
+	return td.EncoderFunc(ctx, w, payload)
+}
+
+// {{getTypeName $name $arg}}TargetDecoder implements a decoder for the {{$name}} type
+// using a provided function.
+type {{getTypeName $name $arg}}TargetDecoder struct {
+	DecoderFunc func(context.Context,io.Reader) ({{$name}}, error)
+}
+
+// Decode implements the decoding function for type {{$name}} used in {{$ServiceName}} by
+// calling the underline decoding function to handle the work.
+func (td {{getTypeName $name $arg}}TargetDecoder) Decode(ctx context.Context, r io.Reader) ({{ $name }}, error) {
+	return td.DecoderFunc(ctx, r)
+}
+
+//****************************************************************************
+// {{$name}} Type Encoders / Decoders Implementations
+// Source: {{$Itr.Path}}
+// Used By: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}
+//****************************************************************************
+
+// {{getTypeName $name $arg}}TypeEncoder implements a encoder for the {{$name}} type.
+type {{getTypeName $name $arg}}TypeEncoder struct {
+	Encoder Encoder
+}
+
+// Encode implements the encode function for type {{$name}} used in {{$ServiceName}} by
+// calling the underline Encoder to handle the work.
+func (en {{getTypeName $name $arg}}TypeEncoder) Encode(ctx context.Context, w io.Writer, payload {{ $name }}) error {
+	return en.Encoder.Encode(ctx, w, payload)
+}
+
+{{if $arg.StructObject }}
+// {{getTypeName $name $arg}}TypeDecoder implements a decoder for the {{$name}} type.
+type {{getTypeName $name $arg}}TypeDecoder struct {
+	Decoder TargetDecoder
+}
+
+// Decode implements the decode function for type {{$name}} used in {{$ServiceName}} by
+// calling the underline Decoder to handle the work.
+func (td {{getTypeName $name $arg}}TypeDecoder) Decode(ctx context.Context,r io.Reader) ({{ $name }}, error) { {{$isPointer := hasPrefix $name "*"}} {{$noPointerName := trimPrefix $name "*"}}
+	var res {{$noPointerName}}
+	err := td.Decoder.Decode(ctx, r, &res)
+	return {{if $isPointer}}&res{{else}}res{{end}}, err
+}
+{{else}}
+// {{getTypeName $name $arg}}TypeDecoder implements a decoder for the {{$name}} type.
+type {{getTypeName $name $arg}}TypeDecoder struct {
+	Decoder Decoder
+}
+
+// Decode implements the decode function for type {{$name}} used in {{$ServiceName}} by
+// calling the underline Decoder to handle the work.
+func (td {{getTypeName $name $arg}}TypeDecoder) Decode(ctx context.Context,r io.Reader) ({{ $name }}, error) {
+	recs, err := td.Decoder.Decode(ctx, r)
+	if err != nil {
+		return recs.({{$name}}), err
+	}
+
+	// Type convert, so we have the right type, which is {{$name}}.
+    var ok bool
+    var erecs {{$name}}
+	if erecs, ok = recs.({{$name}}); ok {
+		return erecs, nil
+	}
+
+    return erecs, ErrDecodedUnknownType
+}
+{{end}}
+{{end}}
+
 //****************************************************************************
 // Encoder and Decoder Types
 // Source: {{$Itr.Path}}
@@ -41,95 +129,21 @@ type TargetDecoder interface{
 	Decode(context.Context, io.Reader, interface{}) error
 }
 
-{{range $name, $arg := .EncodingArgs}}
-//****************************************************************************
-// {{$name}} Target Function Encoders / Decoders Implementations
-// Source: {{$Itr.Path}}
-// Used By: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}
-//****************************************************************************
-
-// {{getTypeName $name}}TargetEncoder implements a encoder for the {{$name}} type
-// using a provided function.
-type {{getTypeName $name}}TargetEncoder struct {
-	EncoderFunc func(context.Context, io.Writer, {{$name}}) error
-}
-
-// Encode implements the encoding function for type {{$name}} used in {{$ServiceName}} by
-// calling the underline encoding function to handle the work.
-func (td {{getTypeName $name}}TargetEncoder) Encode(ctx context.Context, w io.Writer, payload {{ $name }}) error {
-	return td.EncoderFunc(ctx, w, payload)
-}
-
-// {{getTypeName $name}}TargetDecoder implements a decoder for the {{$name}} type
-// using a provided function.
-type {{getTypeName $name}}TargetDecoder struct {
-	DecoderFunc func(context.Context,io.Reader) ({{$name}}, error)
-}
-
-// Decode implements the decoding function for type {{$name}} used in {{$ServiceName}} by
-// calling the underline decoding function to handle the work.
-func (td {{getTypeName $name}}TargetDecoder) Decode(ctx context.Context, r io.Reader) ({{ $name }}, error) {
-	return td.DecoderFunc(ctx, r)
-}
-
-//****************************************************************************
-// {{$name}} Type Encoders / Decoders Implementations
-// Source: {{$Itr.Path}}
-// Used By: {{$Itr.Package}}.{{$Itr.Object.Name.Name}}
-//****************************************************************************
-
-// {{getTypeName $name}}TypeEncoder implements a encoder for the {{$name}} type.
-type {{getTypeName $name}}TypeEncoder struct {
-	Encoder Encoder
-}
-
-// Encode implements the encode function for type {{$name}} used in {{$ServiceName}} by
-// calling the underline Encoder to handle the work.
-func (en {{getTypeName $name}}TypeEncoder) Encode(ctx context.Context, w io.Writer, payload {{ $name }}) error {
-	return en.Encoder.Encode(ctx, w, payload)
-}
-
-{{if $arg.StructObject }}
-// {{getTypeName $name}}TypeDecoder implements a decoder for the {{$name}} type.
-type {{getTypeName $name}}TypeDecoder struct {
-	Decoder TargetDecoder
-}
-
-// Decode implements the decode function for type {{$name}} used in {{$ServiceName}} by
-// calling the underline Decoder to handle the work.
-func (td {{getTypeName $name}}TypeDecoder) Decode(ctx context.Context,r io.Reader) ({{ $name }}, error) { {{$isPointer := hasPrefix $name "*"}} {{$noPointerName := trimPrefix $name "*"}}
-	var res {{$noPointerName}}
-	err := td.Decoder.Decode(ctx, r, &res)
-	return {{if $isPointer}}&res{{else}}res{{end}}, err
-}
-{{else}}
-// {{getTypeName $name}}TypeDecoder implements a decoder for the {{$name}} type.
-type {{getTypeName $name}}TypeDecoder struct {
-	Decoder Decoder
-}
-
-// Decode implements the decode function for type {{$name}} used in {{$ServiceName}} by
-// calling the underline Decoder to handle the work.
-func (td {{getTypeName $name}}TypeDecoder) Decode(ctx context.Context,r io.Reader) ({{ $name }}, error) {
-	recs, err := td.Decoder.Decode(ctx, r)
-	if err != nil {
-		return recs.({{$name}}), err
-	}
-
-	// Type convert, so we have the right type, which is {{$name}}.
-	if erecs, ok := recs.({{$name}}); ok {
-		return erecs, nil
-	}
-
-    return recs.({{$name}}), ErrDecodedUnknownType
-}
-{{end}}
-{{end}}
-
 //****************************************************************************
 // JSON Encoders / Decoders Implementations
 // Source: {{$Itr.Path}}
 //****************************************************************************
+
+var (
+    // DefaultJSONEncoder provides a package-level json encoder for use.
+    DefaultJSONEncoder JSONEncoder
+
+    // DefaultJSONDecoder provides a package-level json decoder for use.
+    DefaultJSONDecoder JSONDecoder
+
+    // DefaultJSONTargetDecoder provides a package-level json target decoder for use.
+    DefaultJSONTargetDecoder JSONTargetDecoder
+)
 
 // JSONEncoder implements a wrapper over the encoding/json JSONEncoder to
 // match the Encoder interface. This allow us use JSON has a encoder for

@@ -18,27 +18,67 @@ var (
 	ErrDecodedUnknownType = errors.New("decoder returns unknown type")
 )
 
+
+
 //****************************************************************************
-// Encoder and Decoder Types
+// []users.User Target Function Encoders / Decoders Implementations
 // Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
 //****************************************************************************
 
-// Encoder defines an interface representing a generic encoder which
-// expects a interface{} type has it's encoding target.
-type Encoder interface{
-	Encode(context.Context, io.Writer, interface{}) error
+// UserSliceTargetEncoder implements a encoder for the []users.User type
+// using a provided function.
+type UserSliceTargetEncoder struct {
+	EncoderFunc func(context.Context, io.Writer, []users.User) error
 }
 
-// Decoder defines an interface representing a generic decoder which
-// returning a interface{} type has it's response.
-type Decoder interface{
-	Decode(context.Context, io.Reader) (interface{}, error)
+// Encode implements the encoding function for type []users.User used in users by
+// calling the underline encoding function to handle the work.
+func (td UserSliceTargetEncoder) Encode(ctx context.Context, w io.Writer, payload []users.User) error {
+	return td.EncoderFunc(ctx, w, payload)
 }
 
-// TargetDecoder defines an interface representing a target decoder which
-// expects a type to decode into.
-type TargetDecoder interface{
-	Decode(context.Context, io.Reader, interface{}) error
+// UserSliceTargetDecoder implements a decoder for the []users.User type
+// using a provided function.
+type UserSliceTargetDecoder struct {
+	DecoderFunc func(context.Context,io.Reader) ([]users.User, error)
+}
+
+// Decode implements the decoding function for type []users.User used in users by
+// calling the underline decoding function to handle the work.
+func (td UserSliceTargetDecoder) Decode(ctx context.Context, r io.Reader) ([]users.User, error) {
+	return td.DecoderFunc(ctx, r)
+}
+
+//****************************************************************************
+// []users.User Type Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+// Used By: users.UserService
+//****************************************************************************
+
+// UserSliceTypeEncoder implements a encoder for the []users.User type.
+type UserSliceTypeEncoder struct {
+	Encoder Encoder
+}
+
+// Encode implements the encode function for type []users.User used in users by
+// calling the underline Encoder to handle the work.
+func (en UserSliceTypeEncoder) Encode(ctx context.Context, w io.Writer, payload []users.User) error {
+	return en.Encoder.Encode(ctx, w, payload)
+}
+
+
+// UserSliceTypeDecoder implements a decoder for the []users.User type.
+type UserSliceTypeDecoder struct {
+	Decoder TargetDecoder
+}
+
+// Decode implements the decode function for type []users.User used in users by
+// calling the underline Decoder to handle the work.
+func (td UserSliceTypeDecoder) Decode(ctx context.Context,r io.Reader) ([]users.User, error) {  
+	var res []users.User
+	err := td.Decoder.Decode(ctx, r, &res)
+	return res, err
 }
 
 
@@ -104,11 +144,13 @@ func (td IntTypeDecoder) Decode(ctx context.Context,r io.Reader) (int, error) {
 	}
 
 	// Type convert, so we have the right type, which is int.
-	if erecs, ok := recs.(int); ok {
+    var ok bool
+    var erecs int
+	if erecs, ok = recs.(int); ok {
 		return erecs, nil
 	}
 
-    return recs.(int), ErrDecodedUnknownType
+    return erecs, ErrDecodedUnknownType
 }
 
 
@@ -174,11 +216,13 @@ func (td StringTypeDecoder) Decode(ctx context.Context,r io.Reader) (string, err
 	}
 
 	// Type convert, so we have the right type, which is string.
-	if erecs, ok := recs.(string); ok {
+    var ok bool
+    var erecs string
+	if erecs, ok = recs.(string); ok {
 		return erecs, nil
 	}
 
-    return recs.(string), ErrDecodedUnknownType
+    return erecs, ErrDecodedUnknownType
 }
 
 
@@ -308,9 +352,43 @@ func (td UserTypeDecoder) Decode(ctx context.Context,r io.Reader) (users.User, e
 
 
 //****************************************************************************
+// Encoder and Decoder Types
+// Source: github.com/gokit/rpkit/examples/users
+//****************************************************************************
+
+// Encoder defines an interface representing a generic encoder which
+// expects a interface{} type has it's encoding target.
+type Encoder interface{
+	Encode(context.Context, io.Writer, interface{}) error
+}
+
+// Decoder defines an interface representing a generic decoder which
+// returning a interface{} type has it's response.
+type Decoder interface{
+	Decode(context.Context, io.Reader) (interface{}, error)
+}
+
+// TargetDecoder defines an interface representing a target decoder which
+// expects a type to decode into.
+type TargetDecoder interface{
+	Decode(context.Context, io.Reader, interface{}) error
+}
+
+//****************************************************************************
 // JSON Encoders / Decoders Implementations
 // Source: github.com/gokit/rpkit/examples/users
 //****************************************************************************
+
+var (
+    // DefaultJSONEncoder provides a package-level json encoder for use.
+    DefaultJSONEncoder JSONEncoder
+
+    // DefaultJSONDecoder provides a package-level json decoder for use.
+    DefaultJSONDecoder JSONDecoder
+
+    // DefaultJSONTargetDecoder provides a package-level json target decoder for use.
+    DefaultJSONTargetDecoder JSONTargetDecoder
+)
 
 // JSONEncoder implements a wrapper over the encoding/json JSONEncoder to
 // match the Encoder interface. This allow us use JSON has a encoder for

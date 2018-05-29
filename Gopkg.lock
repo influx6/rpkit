@@ -17,6 +17,12 @@
   revision = "2b8494104d86337cdd41d0a49cbed8e4583c0ab4"
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/fatih/color"
   packages = ["."]
   revision = "5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4"
@@ -89,7 +95,7 @@
     "gen/templates",
     "utils"
   ]
-  revision = "d12c9a421c3c48f786305148b8eaad63a633b9f4"
+  revision = "48c028dc43c49609616c8fc2ff46d82f5db56415"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -104,6 +110,12 @@
   version = "v0.0.3"
 
 [[projects]]
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/russross/blackfriday"
   packages = ["."]
   revision = "cadec560ec52d93835bf2f15bd794700d3a2473b"
@@ -114,6 +126,12 @@
   name = "github.com/shurcooL/sanitized_anchor_name"
   packages = ["."]
   revision = "86672fcb3f950f35f2e675df2240550f2a50762f"
+
+[[projects]]
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
@@ -133,6 +151,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4b02da76a03619e62e0e8fb1bc363e401cf3b430efbf85099f82b38cfff55067"
+  inputs-digest = "657707474ab42188fd36edf7eb506d0cbec4c5b11e05e1d2f4c2e9a492a720b4"
   solver-name = "gps-cdcl"
   solver-version = 1
