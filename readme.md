@@ -17,7 +17,7 @@ go get github.com/gokit/rpkit
 
 ## How It Works
 
-RPkit is a very simple CLI tool and below are the long and short version to using it:
+RPKit is a very simple CLI tool and below are the long and short version to using it:
 
 ### Steps : Short Version
 
