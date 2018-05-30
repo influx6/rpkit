@@ -15,5 +15,5 @@ before_script:
   - docker build -f travis.dockerfile -t "rpkit:rpkit" ./
 
 script:
-  - docker run -it -rm rpkit
+  - docker run -it --rm rpkit
 
