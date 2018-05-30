@@ -167,6 +167,10 @@ To generate nodejs compatible files with all es6 features compiled to native nod
 > npm run webpack:node
 ```
 
+Your compatible nodejs file suitable for use with a `require` will be found in `./dest/node`.
+
+### Building for the Web
+
 When bundling generated files for the javascript for the client, you will need to run two commands instead of the above,
 see below:
 
@@ -175,7 +179,6 @@ see below:
 To generate nodejs compatible files with all es6 features compiled to native nodejs code:
 
 ```bash
-> npm run webpack:node:win
 > npm run webpack:web:win
 ```
 
@@ -184,9 +187,10 @@ To generate nodejs compatible files with all es6 features compiled to native nod
 To generate nodejs compatible files with all es6 features compiled to native nodejs code:
 
 ```bash
-> npm run webpack:node
 > npm run webpack:web
 ```
+
+Your compatible javascript file suitable for use with a `script` tag will be found in `./dest/web`.
 
 ## Important Rules
 
