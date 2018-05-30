@@ -6,14 +6,10 @@ sudo: required
 services:
   - docker
 
-language:
-  - go
-  - node_js
+language: go
 
 go:
   - 1.9
-  - 1.10
-
 
 before_script:
   - docker build -f travis.dockerfile -t "rpkit:rpkit" ./
