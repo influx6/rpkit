@@ -9,11 +9,12 @@ services:
 language: go
 
 go:
-  - 1.9
+  - "1.9"
 
 before_script:
-  - docker build -f travis.dockerfile -t "rpkit:rpkit" ./
+  - docker build -f travis.dockerfile -t rpkit_test:latest ./
+  - docker tag rpkit_test:latest rpkit_test:latest
 
 script:
-  - docker run -it --rm rpkit
+  - docker run -it --rm rpkit_test:latest
 
