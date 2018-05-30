@@ -1,6 +1,6 @@
 FROM golang:1.8
 
-RUN sudo apt-get update && curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - && apt-get install -y nodejs build-essential
+RUN sudo apt-get update && curl -sL https://deb.nodesource.com/setup_10.x | bash - && apt-get install -y nodejs build-essential
 
 COPY . /rpkit
 WORKDIR /rpkit
