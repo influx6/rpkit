@@ -1,9 +1,7 @@
-Users Tests
----------------
-
-
+## Users Tests
 
 ## Run Go Tests
+
 Simply navigate to this directory and run the following:
 
 ```bash
@@ -40,14 +38,14 @@ You should get:
 --- PASS: TestUserServiceRP_CreateUserWithCreateMethodClient (0.00s)
 PASS
 ok      github.com/gokit/rpkit/examples/users/tests/goside      0.111s
-
 ```
 
 ## Run Go Server and Javascript Client Tests with Nodejs
+
 Simple ensure [Nodejs](https://nodejs.org/) has being installed, then navigate to this directory and run:
 
 ```bash
-> npm install mocha
+> npm install -g mocha
 ```
 
 Open another terminal/command-line and navigate it to this same directory and run the go server:
@@ -63,7 +61,6 @@ Open another terminal and run:
 ```
 
 You should get:
-
 
 ```bash
 λ mocha userservericerp.test.js
@@ -98,15 +95,15 @@ You should get:
 ```
 
 ## Run Javascript Server and Client Tests with Nodejs
+
 Simple ensure [Nodejs](https://nodejs.org/) has being installed, then navigate to this directory and run:
 
 ```bash
-> npm install mocha
+> npm install -g mocha
 > mocha ./jsside/userservicerp.test.js
 ```
 
 You should get:
-
 
 ```bash
 λ mocha userservericerp.test.js
