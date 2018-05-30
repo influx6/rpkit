@@ -70,7 +70,6 @@
     "hexwriter",
     "metrics",
     "metrics/custom",
-    "tests",
     "types/actions",
     "types/events",
     "vfiles"
@@ -140,7 +139,7 @@
     "html",
     "html/atom"
   ]
-  revision = "dfa909b99c79129e1100513e5cd36307665e5723"
+  revision = "8d282c4e200f6234d5df69ac4ad1ecb709c3df2c"
 
 [[projects]]
   branch = "master"
@@ -151,6 +150,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "657707474ab42188fd36edf7eb506d0cbec4c5b11e05e1d2f4c2e9a492a720b4"
+  inputs-digest = "01637424c708314a8899dcae3402661b8b9bedcf160083d3d56b0593d4ba3530"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -1,13 +1,12 @@
 // All code below are auto-generated and should not be edited by hand.
 // See https://github.com/gokit/rpkit for more info.
 {{ $Itr := .Itr}} {{$Pkg := .Pkg}} {{$ServiceName := .ServiceName}}
-
-const http = require("http");
 const URL = require("url-parse");
+const lodash = require("lodash");
 const httpStatus = require("statuses");
 
 // BaseServiceName defines the base name of service root.
-export const BaseServiceName = {{quote .ServiceName}};
+export const BaseServiceName = {{quote .ServiceName}}
 
 // MethodServiceName defines the complete name of this giving API service.
 export const MethodServiceName = "{{.ServiceName}}/{{.Itr.Object.Name.Name}}";
@@ -37,7 +36,17 @@ export function JSONErrorResponse(type, code, err, message, meta) {
         Err: err,
         Message: message,
         Meta: meta,
-    }
+    };
+}
+
+// FromPromise returns a new Promise with the
+// function arguments passed to it. This
+// is provided to allow clients use same
+// promise as package has their are internal
+// checks and use of `instanceof` with the
+// Promise used.
+export function FromPromise(rx, ry) {
+    return new Promise(rx, ry);
 }
 
 // JSONEncoding implements a Object that possess methods
@@ -45,8 +54,8 @@ export function JSONErrorResponse(type, code, err, message, meta) {
 const JSONEncoding = Object.freeze({
     Encode: function EncodeJSON(req, res, model) {
         return new Promise(function encodeJSONResolver(resolve, reject) {
-            const accepts = req.getHeader("accept");
-            if (!accepts.indexOf("application/json")) {
+            const accepts = req.headers.accept;
+            if (accepts.indexOf("application/json") === -1) {
                 reject(new Error("request does not accept json"));
                 return;
             }
@@ -61,20 +70,20 @@ const JSONEncoding = Object.freeze({
             }
 
             res.setHeader("Content-Type", "application/json");
-            res.setHeader("Content-Length", data.length);
-            res.Write(data);
+            res.setHeader("Content-Length", Buffer.byteLength(data));
+            res.write(data);
             resolve(true);
         });
     },
     Decode: function DecodeJSON(req) {
         return new Promise(function decodeJSONResolver(resolve, reject) {
-            if (req.header.contentType.indexOf("application/json") === -1) {
+            if (req.headers["content-type"].indexOf("application/json") === -1) {
                 reject(new Error("request content type must be application/json"));
-                return
+                return;
             }
 
             const data = [];
-            req.on("data", (d) => data.push(d));
+            req.on("data", (d) => { data.push(d); });
             req.on("end", () => {
                 try {
                     const model = JSON.parse(data.join(""));
@@ -90,12 +99,21 @@ const JSONEncoding = Object.freeze({
     },
 });
 
+// prefixSlash prefixes a forward slash to the beginning of provided
+// string.
 function prefixSlash(c) {
+    if (c.startsWith("/")) {
+        return c;
+    }
+    return `/${c}`;
+}
+
+function suffixSlash(c) {
     if (c.endsWith("/")) {
         return c;
     }
     return `${c};`;
-};
+}
 {{range $_, $method := .NoArgAndReturns}}
 // /////////////////////////////////////////////////////////////////
 // RP: No Arguments and No Return Methods
@@ -113,8 +131,7 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
 // {{$method.Name}}Service returns a middleware-aware function which services
 // server-based requests for the GetByContract method. The GetByContract
@@ -138,7 +155,7 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         throw new Error("Decoder must provide Decode function");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
 
@@ -164,18 +181,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         if(options.BeforeRequest) options.BeforeRequest(req);
 
-        res.setHeader("X-Agent", "RPKIT")
-        res.setHeader("X-Service", BaseServiceName)
-        res.setHeader("X-Package", {{quote $Itr.Path}})
-        res.setHeader("X-Method", {{quote $method.Name}})
-        res.setHeader("X-Method-Service", MethodServiceName)
-        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
-        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+        res.setHeader("X-Agent", "RPKIT");
+        res.setHeader("X-Service", BaseServiceName);
+        res.setHeader("X-Package", {{quote $Itr.Path}});
+        res.setHeader("X-Method", {{quote $method.Name}});
+        res.setHeader("X-Method-Service", MethodServiceName);
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute);
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
         for (let key in options.Headers) {
             res.setHeader(key, options.Headers[key]);
@@ -183,11 +200,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
 
         if (req.method === "HEAD") {
             res.writeHead(httpStatus["no content"], {});
-            return
+            return;
         }
 
         const reqURL = URL(req.url);
-        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+        if (!(suffixSlash(reqURL.pathname).endsWith(suffixSlash({{$method.Name}}ServiceRoutePath)))) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -208,46 +225,48 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
-        Promise.resolve(true).then(() => {
-            const actionResult = {{$method.Name}}Contract(req);
-            if (!(actionResult instanceof Promise)) {
-                res.writeHead(httpStatus["bad request"], {
-                    "Content-Type": "application/json",
-                });
+        const actionResult = {{$method.Name}}Contract(req);
+        if (!(actionResult instanceof Promise)) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
 
-                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
-                    httpStatus["bad request"],
-                    "method failed to return promise",
-                    new Error("Promise expected as return from method"), {
-                        url: req.url,
-                        headers: req.headers,
-                        http_method: req.method,
-                        package: {{quote $Itr.Path}},
-                        api_base: BaseServiceName,
-                        method: {{quote $method.Name}},
-                        api_service: MethodServiceName,
-                        route: {{$method.Name}}ServiceRoute,
-                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                    })));
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
+                httpStatus["bad request"],
+                "method failed to return promise",
+                new Error("Promise expected as return from method"), {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
 
-                res.end();
-                return
-            }
+            res.end();
+            return;
+        }
 
-            return actionResult;
+        actionResult.then((model) => {
+            res.writeHead(httpStatus["no content"], {});
+            res.end();
+            return model;
         }).catch((err) => {
             if (res.finished) {
-                return
+                return Promise.reject(err);
             }
 
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
 
-            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
                 httpStatus["bad request"],
                 "method returned with an error",
                 err, {
@@ -263,37 +282,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then((model) => {
-            res.writeHead(httpStatus["no content"], {});
-            res.end();
-        }).catch((err) => {
-            res.writeHead(httpStatus["bad request"], {
-                "Content-Type": "application/json",
-            });
-
-            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
-                httpStatus["bad request"],
-                "failed to encode response",
-                err, {
-                    url: req.url,
-                    headers: req.headers,
-                    http_method: req.method,
-                    package: {{quote $Itr.Path}},
-                    api_base: BaseServiceName,
-                    method: {{quote $method.Name}},
-                    api_service: MethodServiceName,
-                    route: {{$method.Name}}ServiceRoute,
-                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                })));
-
-            res.end();
-        }).then(() => {
-            res.end();
         });
 
         if (next && typeof next == "function") next();
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .OnlyErrorMethods}}
@@ -313,8 +306,7 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
 // {{$method.Name}}Service returns a middleware-aware function which services
 // server-based requests for the GetByContract method. The GetByContract
@@ -338,7 +330,7 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         throw new Error("Decoder must provide Decode function");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
 
@@ -364,18 +356,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         if(options.BeforeRequest) options.BeforeRequest(req);
 
-        res.setHeader("X-Agent", "RPKIT")
-        res.setHeader("X-Service", BaseServiceName)
-        res.setHeader("X-Package", {{quote $Itr.Path}})
-        res.setHeader("X-Method", {{quote $method.Name}})
-        res.setHeader("X-Method-Service", MethodServiceName)
-        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
-        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+        res.setHeader("X-Agent", "RPKIT");
+        res.setHeader("X-Service", BaseServiceName);
+        res.setHeader("X-Package", {{quote $Itr.Path}});
+        res.setHeader("X-Method", {{quote $method.Name}});
+        res.setHeader("X-Method-Service", MethodServiceName);
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute);
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
         for (let key in options.Headers) {
             res.setHeader(key, options.Headers[key]);
@@ -383,11 +375,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
 
         if (req.method === "HEAD") {
             res.writeHead(httpStatus["no content"], {});
-            return
+            return;
         }
 
         const reqURL = URL(req.url);
-        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+        if (!(suffixSlash(reqURL.pathname).endsWith(suffixSlash({{$method.Name}}ServiceRoutePath)))) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -408,46 +400,48 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
-        Promise.resolve(true).then(() => {
-            const actionResult = {{$method.Name}}Contract(req);
-            if (!(actionResult instanceof Promise)) {
-                res.writeHead(httpStatus["bad request"], {
-                    "Content-Type": "application/json",
-                });
+        const actionResult = {{$method.Name}}Contract(req);
+        if (!(actionResult instanceof Promise)) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
 
-                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
-                    httpStatus["bad request"],
-                    "method failed to return promise",
-                    new Error("Promise expected as return from method"), {
-                        url: req.url,
-                        headers: req.headers,
-                        http_method: req.method,
-                        package: {{quote $Itr.Path}},
-                        api_base: BaseServiceName,
-                        method: {{quote $method.Name}},
-                        api_service: MethodServiceName,
-                        route: {{$method.Name}}ServiceRoute,
-                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                    })));
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
+                httpStatus["bad request"],
+                "method failed to return promise",
+                new Error("Promise expected as return from method"), {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
 
-                res.end();
-                return
-            }
+            res.end();
+            return;
+        }
 
-            return actionResult;
+        actionResult.then((model) => {
+            res.writeHead(httpStatus["no content"], {});
+            res.end();
+            return model;
         }).catch((err) => {
             if (res.finished) {
-                return
+                return Promise.reject(err);
             }
 
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
 
-            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
                 httpStatus["bad request"],
                 "method returned with an error",
                 err, {
@@ -463,37 +457,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then((model) => {
-            res.writeHead(httpStatus["no content"], {});
-            res.end();
-        }).catch((err) => {
-            res.writeHead(httpStatus["bad request"], {
-                "Content-Type": "application/json",
-            });
-
-            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
-                httpStatus["bad request"],
-                "failed to encode response",
-                err, {
-                    url: req.url,
-                    headers: req.headers,
-                    http_method: req.method,
-                    package: {{quote $Itr.Path}},
-                    api_base: BaseServiceName,
-                    method: {{quote $method.Name}},
-                    api_service: MethodServiceName,
-                    route: {{$method.Name}}ServiceRoute,
-                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                })));
-
-            res.end();
-        }).then(() => {
-            res.end();
         });
 
         if (next && typeof next == "function") next();
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .OutputWithErrorMethods}}
@@ -513,14 +481,13 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
@@ -547,7 +514,7 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         throw new Error("Decoder must provide Decode function");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
 
@@ -573,18 +540,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         if(options.BeforeRequest) options.BeforeRequest(req);
 
-        res.setHeader("X-Agent", "RPKIT")
-        res.setHeader("X-Service", BaseServiceName)
-        res.setHeader("X-Package", {{quote $Itr.Path}})
-        res.setHeader("X-Method", {{quote $method.Name}})
-        res.setHeader("X-Method-Service", MethodServiceName)
-        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
-        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+        res.setHeader("X-Agent", "RPKIT");
+        res.setHeader("X-Service", BaseServiceName);
+        res.setHeader("X-Package", {{quote $Itr.Path}});
+        res.setHeader("X-Method", {{quote $method.Name}});
+        res.setHeader("X-Method-Service", MethodServiceName);
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute);
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
         for (let key in options.Headers) {
             res.setHeader(key, options.Headers[key]);
@@ -592,11 +559,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
 
         if (req.method === "HEAD") {
             res.writeHead(httpStatus["no content"], {});
-            return
+            return;
         }
 
         const reqURL = URL(req.url);
-        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+        if (!(suffixSlash(reqURL.pathname).endsWith(suffixSlash({{$method.Name}}ServiceRoutePath)))) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -617,46 +584,40 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
-        Promise.resolve(true).then(() => {
-            const actionResult = {{$method.Name}}Contract(req);
-            if (!(actionResult instanceof Promise)) {
-                res.writeHead(httpStatus["bad request"], {
-                    "Content-Type": "application/json",
-                });
-
-                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
-                    httpStatus["bad request"],
-                    "method failed to return promise",
-                    new Error("Promise expected as return from method"), {
-                        url: req.url,
-                        headers: req.headers,
-                        http_method: req.method,
-                        package: {{quote $Itr.Path}},
-                        api_base: BaseServiceName,
-                        method: {{quote $method.Name}},
-                        api_service: MethodServiceName,
-                        route: {{$method.Name}}ServiceRoute,
-                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                    })));
-
-                res.end();
-                return
-            }
-
-            return actionResult;
-        }).catch((err) => {
-            if (res.finished) {
-                return
-            }
-
+        const actionResult = {{$method.Name}}Contract(req);
+        if (!(actionResult instanceof Promise)) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
 
-            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
+                httpStatus["bad request"],
+                "method failed to return promise",
+                new Error("Promise expected as return from method"), {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return;
+        }
+
+        actionResult.catch((err) => {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
                 httpStatus["bad request"],
                 "method returned with an error",
                 err, {
@@ -672,9 +633,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then((model) => {
+        });
+
+        actionResult.then((model) => {
             return options.Encoder.Encode(req, res, model);
+        }).then((m) => {
+            res.end();
+            return m;
         }).catch((err) => {
+            if (res.finished) {
+                return Promise.reject(err);
+            }
+
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -695,13 +665,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then(() => {
-            res.end();
         });
 
         if (next && typeof next == "function") next();
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .OutputWithNoErrorMethods}}
@@ -721,14 +689,13 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
@@ -755,7 +722,7 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         throw new Error("Decoder must provide Decode function");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
 
@@ -781,18 +748,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
         
         if(options.BeforeRequest) options.BeforeRequest(req);
 
-        res.setHeader("X-Agent", "RPKIT")
-        res.setHeader("X-Service", BaseServiceName)
-        res.setHeader("X-Package", {{quote $Itr.Path}})
-        res.setHeader("X-Method", {{quote $method.Name}})
-        res.setHeader("X-Method-Service", MethodServiceName)
-        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
-        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+        res.setHeader("X-Agent", "RPKIT");
+        res.setHeader("X-Service", BaseServiceName);
+        res.setHeader("X-Package", {{quote $Itr.Path}});
+        res.setHeader("X-Method", {{quote $method.Name}});
+        res.setHeader("X-Method-Service", MethodServiceName);
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute);
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
         for (let key in options.Headers) {
             res.setHeader(key, options.Headers[key]);
@@ -800,11 +767,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
 
         if (req.method === "HEAD") {
             res.writeHead(httpStatus["no content"], {});
-            return
+            return;
         }
 
         const reqURL = URL(req.url);
-        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+        if (!(suffixSlash(reqURL.pathname).endsWith(suffixSlash({{$method.Name}}ServiceRoutePath)))) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -825,46 +792,44 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
-        Promise.resolve(true).then(() => {
-            const actionResult = {{$method.Name}}Contract(req);
-            if (!(actionResult instanceof Promise)) {
-                res.writeHead(httpStatus["bad request"], {
-                    "Content-Type": "application/json",
-                });
+        const actionResult = {{$method.Name}}Contract(req);
+        if (!(actionResult instanceof Promise)) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
 
-                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
-                    httpStatus["bad request"],
-                    "method failed to return promise",
-                    new Error("Promise expected as return from method"), {
-                        url: req.url,
-                        headers: req.headers,
-                        http_method: req.method,
-                        package: {{quote $Itr.Path}},
-                        api_base: BaseServiceName,
-                        method: {{quote $method.Name}},
-                        api_service: MethodServiceName,
-                        route: {{$method.Name}}ServiceRoute,
-                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                    })));
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
+                httpStatus["bad request"],
+                "method failed to return promise",
+                new Error("Promise expected as return from method"), {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
 
-                res.end();
-                return
-            }
+            res.end();
+            return;
+        }
 
-            return actionResult;
-        }).catch((err) => {
+        actionResult.catch((err) => {
             if (res.finished) {
-                return
+                return;
             }
 
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
 
-            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
                 httpStatus["bad request"],
                 "method returned with an error",
                 err, {
@@ -880,9 +845,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then((model) => {
+        });
+
+        actionResult.then((model) => {
             return options.Encoder.Encode(req, res, model);
+        }).then((m) => {
+            res.end();
+            return m;
         }).catch((err) => {
+            if (res.finished) {
+                return Promise.reject(err);
+            }
+
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -903,13 +877,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then(() => {
-            res.end();
         });
 
         if (next && typeof next == "function") next();
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .InputWithErrorMethods}}
@@ -929,23 +901,22 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
-{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
 
-{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
@@ -972,7 +943,7 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         throw new Error("Decoder must provide Decode function");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
 
@@ -998,18 +969,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
         
         if(options.BeforeRequest) options.BeforeRequest(req);
 
-        res.setHeader("X-Agent", "RPKIT")
-        res.setHeader("X-Service", BaseServiceName)
-        res.setHeader("X-Package", {{quote $Itr.Path}})
-        res.setHeader("X-Method", {{quote $method.Name}})
-        res.setHeader("X-Method-Service", MethodServiceName)
-        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
-        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+        res.setHeader("X-Agent", "RPKIT");
+        res.setHeader("X-Service", BaseServiceName);
+        res.setHeader("X-Package", {{quote $Itr.Path}});
+        res.setHeader("X-Method", {{quote $method.Name}});
+        res.setHeader("X-Method-Service", MethodServiceName);
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute);
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
         for (let key in options.Headers) {
             res.setHeader(key, options.Headers[key]);
@@ -1017,11 +988,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
 
         if (req.method === "HEAD") {
             res.writeHead(httpStatus["no content"], {});
-            return
+            return;
         }
 
         const reqURL = URL(req.url);
-        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+        if (!(suffixSlash(reqURL.pathname).endsWith(suffixSlash({{$method.Name}}ServiceRoutePath)))) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -1042,10 +1013,34 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         const decodePromise = options.Decoder.Decode(req);
+        if (!(decodePromise instanceof Promise)) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                httpStatus["bad request"],
+                "decoder.Decode method failed to return promise",
+                new Error("Promise expected as return from method"), {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return;
+        }
+
         decodePromise.catch((err) => {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
@@ -1072,40 +1067,24 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         decodePromise.then((result) => {
             const actionResult = {{$method.Name}}Contract(req, result);
             if (!(actionResult instanceof Promise)) {
-                res.writeHead(httpStatus["bad request"], {
-                    "Content-Type": "application/json",
-                });
-
-                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
-                    httpStatus["bad request"],
-                    "method failed to return promise",
-                    new Error("Promise expected as return from method"), {
-                        url: req.url,
-                        headers: req.headers,
-                        http_method: req.method,
-                        package: {{quote $Itr.Path}},
-                        api_base: BaseServiceName,
-                        method: {{quote $method.Name}},
-                        api_service: MethodServiceName,
-                        route: {{$method.Name}}ServiceRoute,
-                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                    })));
-
-                res.end();
-                return
+                return Promise.reject(new Error("failed action: action does not return a Promise"));
             }
 
             return actionResult;
+        }).then((model) => {
+            res.writeHead(httpStatus["no content"], {});
+            res.end();
+            return model;
         }).catch((err) => {
             if (res.finished) {
-                return
+                return Promise.reject(err);
             }
 
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
 
-            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
                 httpStatus["bad request"],
                 "method returned with an error",
                 err, {
@@ -1121,37 +1100,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then((model) => {
-            res.writeHead(httpStatus["no content"], {});
-            res.end();
-        }).catch((err) => {
-            res.writeHead(httpStatus["bad request"], {
-                "Content-Type": "application/json",
-            });
-
-            res.write(JSON.stringify(JSONErrorResponse(ResponseEncodingError,
-                httpStatus["bad request"],
-                "failed to encode response",
-                err, {
-                    url: req.url,
-                    headers: req.headers,
-                    http_method: req.method,
-                    package: {{quote $Itr.Path}},
-                    api_base: BaseServiceName,
-                    method: {{quote $method.Name}},
-                    api_service: MethodServiceName,
-                    route: {{$method.Name}}ServiceRoute,
-                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                })));
-
-            res.end();
-        }).then(() => {
-            res.end();
         });
 
         if (next && typeof next == "function") next();
     };
-};
+}
 
 {{ end }}
 {{range $_, $method := .InputAndOutputMethods}}
@@ -1171,29 +1124,28 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+}`;
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
@@ -1220,7 +1172,7 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         throw new Error("Decoder must provide Decode function");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
 
@@ -1246,18 +1198,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         if(options.BeforeRequest) options.BeforeRequest(req);
 
-        res.setHeader("X-Agent", "RPKIT")
-        res.setHeader("X-Service", BaseServiceName)
-        res.setHeader("X-Package", {{quote $Itr.Path}})
-        res.setHeader("X-Method", {{quote $method.Name}})
-        res.setHeader("X-Method-Service", MethodServiceName)
-        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
-        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+        res.setHeader("X-Agent", "RPKIT");
+        res.setHeader("X-Service", BaseServiceName);
+        res.setHeader("X-Package", {{quote $Itr.Path}});
+        res.setHeader("X-Method", {{quote $method.Name}});
+        res.setHeader("X-Method-Service", MethodServiceName);
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute);
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
         for (let key in options.Headers) {
             res.setHeader(key, options.Headers[key]);
@@ -1265,11 +1217,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
 
         if (req.method === "HEAD") {
             res.writeHead(httpStatus["no content"], {});
-            return
+            return;
         }
 
         const reqURL = URL(req.url);
-        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+        if (!(suffixSlash(reqURL.pathname).endsWith(suffixSlash({{$method.Name}}ServiceRoutePath)))) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -1290,10 +1242,34 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         const decodePromise = options.Decoder.Decode(req);
+        if (!(decodePromise instanceof Promise)) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                httpStatus["bad request"],
+                "decoder.Decode method failed to return promise",
+                new Error("Promise expected as return from method"), {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return;
+        }
+
         decodePromise.catch((err) => {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
@@ -1317,43 +1293,21 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
             res.end();
         });
 
-        decodePromise.then((result) => {
+        const actionRes = decodePromise.then((result) => {
             const actionResult = {{$method.Name}}Contract(req, result);
             if (!(actionResult instanceof Promise)) {
-                res.writeHead(httpStatus["bad request"], {
-                    "Content-Type": "application/json",
-                });
-
-                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
-                    httpStatus["bad request"],
-                    "method failed to return promise",
-                    new Error("Promise expected as return from method"), {
-                        url: req.url,
-                        headers: req.headers,
-                        http_method: req.method,
-                        package: {{quote $Itr.Path}},
-                        api_base: BaseServiceName,
-                        method: {{quote $method.Name}},
-                        api_service: MethodServiceName,
-                        route: {{$method.Name}}ServiceRoute,
-                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                    })));
-
-                res.end();
-                return
+                return Promise.reject(new Error("failed action: action did not return promise"));
             }
 
             return actionResult;
-        }).catch((err) => {
-            if (res.finished) {
-                return
-            }
+        });
 
+        actionRes.catch((err) => {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
 
-            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
                 httpStatus["bad request"],
                 "method returned with an error",
                 err, {
@@ -1369,9 +1323,20 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then((model) => {
+
+            return Promise.reject(err);
+        });
+
+        actionRes.then((model) => {
             return options.Encoder.Encode(req, res, model);
+        }).then((m) => {
+            res.end();
+            return m;
         }).catch((err) => {
+            if (res.finished) {
+                return Promise.reject(err);
+            }
+
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -1392,13 +1357,13 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then(() => {
-            res.end();
         });
+
+
 
         if (next && typeof next == "function") next();
     };
-};
+}
 
 
 {{end}}
@@ -1419,30 +1384,29 @@ export const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}/{{$Itr.Object
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
@@ -1469,7 +1433,7 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
         throw new Error("Decoder must provide Decode function");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
 
@@ -1495,18 +1459,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         if(options.BeforeRequest) options.BeforeRequest(req);
         
-        res.setHeader("X-Agent", "RPKIT")
-        res.setHeader("X-Service", BaseServiceName)
-        res.setHeader("X-Package", {{quote $Itr.Path}})
-        res.setHeader("X-Method", {{quote $method.Name}})
-        res.setHeader("X-Method-Service", MethodServiceName)
-        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute)
-        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+        res.setHeader("X-Agent", "RPKIT");
+        res.setHeader("X-Service", BaseServiceName);
+        res.setHeader("X-Package", {{quote $Itr.Path}});
+        res.setHeader("X-Method", {{quote $method.Name}});
+        res.setHeader("X-Method-Service", MethodServiceName);
+        res.setHeader("X-API-Route", {{$method.Name}}ServiceRoute);
+        res.setHeader("X-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
         for (let key in options.Headers) {
             res.setHeader(key, options.Headers[key]);
@@ -1514,11 +1478,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
 
         if (req.method === "HEAD") {
             res.writeHead(httpStatus["no content"], {});
-            return
+            return;
         }
 
         const reqURL = URL(req.url);
-        if (!(prefixSlash(reqURL.pathname).endsWith(prefixSlash(GetUserServiceRoutePath)))) {
+        if (!(suffixSlash(reqURL.pathname).endsWith(suffixSlash({{$method.Name}}ServiceRoutePath)))) {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -1539,10 +1503,34 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-            return
+            return;
         }
 
         const decodePromise = options.Decoder.Decode(req);
+        if (!(decodePromise instanceof Promise)) {
+            res.writeHead(httpStatus["bad request"], {
+                "Content-Type": "application/json",
+            });
+
+            res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
+                httpStatus["bad request"],
+                "decoder.Decode method failed to return promise",
+                new Error("Promise expected as return from method"), {
+                    url: req.url,
+                    headers: req.headers,
+                    http_method: req.method,
+                    package: {{quote $Itr.Path}},
+                    api_base: BaseServiceName,
+                    method: {{quote $method.Name}},
+                    api_service: MethodServiceName,
+                    route: {{$method.Name}}ServiceRoute,
+                    api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
+                })));
+
+            res.end();
+            return;
+        }
+
         decodePromise.catch((err) => {
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
@@ -1566,43 +1554,25 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
             res.end();
         });
 
-        decodePromise.then((result) => {
+        const actionRes = decodePromise.then((result) => {
             const actionResult = {{$method.Name}}Contract(req, result);
             if (!(actionResult instanceof Promise)) {
-                res.writeHead(httpStatus["bad request"], {
-                    "Content-Type": "application/json",
-                });
-
-                res.write(JSON.stringify(JSONErrorResponse(RequestDecodingError,
-                    httpStatus["bad request"],
-                    "method failed to return promise",
-                    new Error("Promise expected as return from method"), {
-                        url: req.url,
-                        headers: req.headers,
-                        http_method: req.method,
-                        package: {{quote $Itr.Path}},
-                        api_base: BaseServiceName,
-                        method: {{quote $method.Name}},
-                        api_service: MethodServiceName,
-                        route: {{$method.Name}}ServiceRoute,
-                        api: "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}",
-                    })));
-
-                res.end();
-                return
+                return Promise.reject(new Error("failed action: action does not return a Promise"));
             }
 
             return actionResult;
-        }).catch((err) => {
+        });
+
+        actionRes.catch((err) => {
             if (res.finished) {
-                return
+                return Promise.reject(err);
             }
 
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
 
-            res.write(JSON.stringify(JSONErrorResponse(ActinError,
+            res.write(JSON.stringify(JSONErrorResponse(ActionError,
                 httpStatus["bad request"],
                 "method returned with an error",
                 err, {
@@ -1618,9 +1588,18 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then((model) => {
+        });
+
+        actionRes.then((model) => {
             return options.Encoder.Encode(req, res, model);
+        }).then((m) => {
+            res.end();
+            return m;
         }).catch((err) => {
+            if(res.finished){
+                return Promise.reject(err);
+            }
+
             res.writeHead(httpStatus["bad request"], {
                 "Content-Type": "application/json",
             });
@@ -1641,13 +1620,11 @@ export function {{$method.Name}}Service({{$method.Name}}Contract, options) {
                 })));
 
             res.end();
-        }).then(() => {
-            res.end();
         });
 
         if (next && typeof next == "function") next();
     };
-};
+}
 
 {{end}}
 

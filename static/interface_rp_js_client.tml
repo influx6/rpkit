@@ -10,7 +10,7 @@ const lodash = require("lodash");
 const axios = require("axios");
 
 // BaseServiceName defines the base name of service root.
-export const BaseServiceName = {{quote .ServiceName}};
+export const BaseServiceName = {{quote .ServiceName}}
 
 // MethodServiceName defines the complete name of this giving API service.
 export const MethodServiceName = "{{.ServiceName}}/{{.Itr.Object.Name.Name}}";
@@ -40,7 +40,7 @@ export function JSONErrorResponse(type, code, err, message, meta) {
         Err: err,
         Message: message,
         Meta: meta,
-    }
+    };
 }
 
 // JSONEncoding defines a JSON encoding implementation
@@ -50,40 +50,14 @@ export function JSONErrorResponse(type, code, err, message, meta) {
 export const JSONEncoding = Object.freeze({
     Decode: function(req, res, body) {
         return new Promise(function EncodePromise(resolve, reject) {
-            if (res.headers["Content-Type"].indexOf("application/json") === -1) {
+            if (res.headers["content-type"].indexOf("application/json") === -1) {
                 reject(new Error("request content type must be application/json"));
                 return;
             }
 
-            if (body instanceof buffer.Buffer) {
-                try {
-                    const content = JSON.parse(body.toString("utf8"));
-                    resolve(content);
-                } catch (e) {
-                    reject(e);
-                }
-                return;
-            }
-
-            if (typeof body === "string") {
-                try {
-                    const content = JSON.parse(body);
-                    resolve(content);
-                } catch (e) {
-                    reject(e);
-                }
-                return;
-            };
-
-            if (typeof body === "object") {
-                resolve(body);
-                return;
-            }
-
-            reject({
-                Error: new Error("unknown content body received"),
-                Body: body,
-            });
+            // Since we are using axios, any response that is valid JSON
+            // will immediately get parsed, to just return.
+            resolve(body);
         });
     },
     Encode: function(req, model) {
@@ -99,6 +73,7 @@ export const JSONEncoding = Object.freeze({
                 return;
             }
 
+            req.end();
             resolve(req);
         });
     },
@@ -107,51 +82,57 @@ export const JSONEncoding = Object.freeze({
 // HTTPTransport implements a custom http transport for handling
 // request processing and response returning. This allows user
 // to plug a custom http request transport handling layer
-// as desired. An HTTPTransport must always return
+// as desired. An HTTPTransport must always return;
 // a promise. The http transport uses https://github.com/axios/axios
 // underneath.
 export const HTTPTransport = Object.freeze({
     Do: function(req, timeout) {
-        return new Promise(function RequestPromise(resolve, reject) {
-            axios.request({
-				method: "POST",
-				timeout: timeout,
-                data: req.body.join(""),
-				url: joinURL(req.base, req.url),
-                headers: lodash.merge(req.headers, {"X-Requested-With-Lib": "axios (https://github.com/axios/axios)"}),
-            }).catch((e) =>{
-                if(e.response && e.response.data){
-                    const msg = getJSONError(e.response.data);
-                    msg.axiosError = e;
-                    reject(msg);
-                    return;
-                }
+        const ops = axios.request({
+            method: "POST",
+            timeout: timeout,
+            data: req.body,
+            url: joinURL(req.base, req.url),
+            headers: lodash.merge(req.headers, {"X-Requested-With-Lib": "axios (https://github.com/axios/axios)"}),
+        })
 
-                reject(e);
-            }).then((res) => {
-                if (requestFacedInternalIssues(res)) {
-                    reject(getJSONError(res.data))
-                    return;
-                };
+        return ops.then((res) => {
+            if(!res){
+                return Promise.reject(new Error("received null/nil response object"));
+            }
 
-                if (requestFailed(res)) {
-                    reject(getJSONError(res.data))
-                    return;
-                };
+            if(isError(res)){
+                return Promise.reject(res)
+            }
 
-                if (requestRedirected(res)) {
-                    reject(getJSONError(res.data))
-                    return;
-                };
+            if (requestRedirected(res) || requestFailed(res) || requestFacedInternalIssues(res)) {
+                return Promise.reject(getJSONError(res.data));
+            }
 
-                resolve(Object.freeze({
-                    res: res,
-                    body: res.data,
-                }));
-            });
+            return {
+                res: res,
+                body: res.data,
+            };
+        }).catch((e) =>{
+            if(e.response && e.response.data){
+                const msg = getJSONError(e.response.data);
+                msg.original_error = e;
+                return Promise.reject(msg);
+            }
+            return Promise.reject(e);
         });
     },
 });
+
+
+// FromPromise returns a new Promise with the
+// function arguments passed to it. This
+// is provided to allow clients use same
+// promise as package has their are internal
+// checks and use of `instanceof` with the
+// Promise used.
+export function FromPromise(rx, ry) {
+    return new Promise(rx, ry);
+}
 
 // NewRequest returns a object containing basic data related
 // to a outgoing request with associated headers to be sent along.
@@ -160,7 +141,7 @@ export function NewRequest(base, url, headers) {
     const reqObj = {
         base: base,
         url: url,
-        headers: headers ? headers : {},
+        headers: headers || {},
         body: null,
         setHeader: (key, value) => {
             reqObj.headers[key] = value;
@@ -174,57 +155,81 @@ export function NewRequest(base, url, headers) {
             reqObj.body = [];
             reqObj.body.push(data);
         },
+        end: () => {
+            if (reqObj.body) reqObj.body = reqObj.body.join("");
+        },
     };
 
     return reqObj;
-};
+}
+
+function isError(err) {
+    if (lodash.isError(err)) {
+        return true;
+    }
+    return (err instanceof Error);
+}
 
 // joinURL joins provided string paths into a whole,
 // ensuring to add the necessary slash in between parts.
 function joinURL(base, to) {
-    if (base.endsWith("/")) {
-        return `${base}${to}`;
+    let toURL = to;
+    if (toURL.startsWith("/")) {
+        toURL = to.substring(1);
     }
 
-    return `${base}/${to}`;
-};
+    if (base.endsWith("/")) {
+        return (`${base}${toURL}`).trim();
+    }
 
-// prefixSlash prefixes a forward slash to end of provided
+    return (`${base}/${toURL}`).trim();
+}
+
+// prefixSlash prefixes a forward slash to the beginning of provided
 // string.
 function prefixSlash(c) {
+    if (c.startsWith("/")) {
+        return c;
+    }
+    return `/${c}`;
+}
+
+// suffixSlash suffixes a forward slash to end of provided
+// string.
+function suffixSlash(c) {
     if (c.endsWith("/")) {
         return c;
     }
-    return `${c};`;
-};
+    return `${c}`;
+}
 
 function requestRedirected(res) {
     if (res.status >= 300 && res.status <= 308) {
         return true;
     }
     return false;
-};
+}
 
 function requestFailed(res) {
     if (res.status >= 400 && res.status < 500) {
         return true;
-    };
+    }
     return false;
-};
+}
 
 function requestFacedInternalIssues(res) {
     if (res.status >= 500 && res.status < 600) {
         return true;
-    };
+    }
     return false;
-};
+}
 
 function requestSucceeded(res) {
     if (res.status >= 200 && res.status <= 299) {
         return true;
-    };
+    }
     return false;
-};
+}
 
 function getJSONError(body) {
     if (typeof body === "object") {
@@ -249,7 +254,7 @@ function getJSONError(body) {
     }
 
     return res;
-};
+}
 {{range $_, $method := .NoArgAndReturns}}
 // /////////////////////////////////////////////////////////////////
 // RP: No Arguments and No Return Methods
@@ -267,8 +272,7 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
 // {{$method.Name}}Client returns a RPC method to be called to handle requests
 // for the {{$method.Name}} method of {{quote $Itr.Path}}.
@@ -300,35 +304,33 @@ export function {{$method.Name}}Client(options) {
         throw new Error("options must provide a ServiceAddr pointing to service http server");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
     if (!options.Transport) options.Transport = HTTPTransport;
 
     return function {{$method.Name}}RPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            const req = newRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
-            req.setHeader("X-Client", "JS-RPKIT")
-            req.setHeader("X-Service", BaseServiceName)
-            req.setHeader("X-Package", {{quote $Itr.Path}})
-            req.setHeader("X-Method-Client", {{quote $method.Name}})
-            req.setHeader("X-Method-ClientService", MethodServiceName)
-            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute)
-            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath)
-            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+            const req = NewRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", {{quote $Itr.Path}});
+            req.setHeader("X-Method-Client", {{quote $method.Name}});
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(() => {
-                return options.Transport.Do(req);
-            }).then((resObj) => {
-                resolve(true);
+            options.Transport.Do(req, options.Timeout).then((resObj) => {
+                resolve(null);
             }).catch((err) => {
                 reject(err);
             });
         });
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .OnlyErrorMethods}}
@@ -348,8 +350,7 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
 // {{$method.Name}}Client returns a RPC method to be called to handle requests
 // for the {{$method.Name}} method of {{quote $Itr.Path}}.
@@ -381,35 +382,33 @@ export function {{$method.Name}}Client(options) {
         throw new Error("options must provide a ServiceAddr pointing to service http server");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
     if (!options.Transport) options.Transport = HTTPTransport;
 
     return function {{$method.Name}}RPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            const req = newRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
-            req.setHeader("X-Client", "JS-RPKIT")
-            req.setHeader("X-Service", BaseServiceName)
-            req.setHeader("X-Package", {{quote $Itr.Path}})
-            req.setHeader("X-Method-Client", {{quote $method.Name}})
-            req.setHeader("X-Method-ClientService", MethodServiceName)
-            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute)
-            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath)
-            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+            const req = NewRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", {{quote $Itr.Path}});
+            req.setHeader("X-Method-Client", {{quote $method.Name}});
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(() => {
-                return options.Transport.Do(req);
-            }).then((resObj) => {
-                resolve(true);
+            options.Transport.Do(req, options.Timeout).then((resObj) => {
+                resolve(null);
             }).catch((err) => {
                 reject(err);
             });
         });
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .OutputWithErrorMethods}}
@@ -429,13 +428,12 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+}`;
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
@@ -470,28 +468,26 @@ export function {{$method.Name}}Client(options) {
         throw new Error("options must provide a ServiceAddr pointing to service http server");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
     if (!options.Transport) options.Transport = HTTPTransport;
 
     return function {{$method.Name}}RPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            const req = newRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
-            req.setHeader("X-Client", "JS-RPKIT")
-            req.setHeader("X-Service", BaseServiceName)
-            req.setHeader("X-Package", {{quote $Itr.Path}})
-            req.setHeader("X-Method-Client", {{quote $method.Name}})
-            req.setHeader("X-Method-ClientService", MethodServiceName)
-            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute)
-            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath)
-            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+            const req = NewRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", {{quote $Itr.Path}});
+            req.setHeader("X-Method-Client", {{quote $method.Name}});
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(() => {
-                return options.Transport.Do(req);
-            }).then((resObj) => {
+            options.Transport.Do(req, options.Timeout).then((resObj) => {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then((resModel) => {
                 resolve(resModel);
@@ -500,7 +496,7 @@ export function {{$method.Name}}Client(options) {
             });
         });
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .OutputWithNoErrorMethods}}
@@ -520,14 +516,13 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
@@ -562,28 +557,26 @@ export function {{$method.Name}}Client(options) {
         throw new Error("options must provide a ServiceAddr pointing to service http server");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
     if (!options.Transport) options.Transport = HTTPTransport;
 
     return function {{$method.Name}}RPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            const req = newRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
-            req.setHeader("X-Client", "JS-RPKIT")
-            req.setHeader("X-Service", BaseServiceName)
-            req.setHeader("X-Package", {{quote $Itr.Path}})
-            req.setHeader("X-Method-Client", {{quote $method.Name}})
-            req.setHeader("X-Method-ClientService", MethodServiceName)
-            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute)
-            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath)
-            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+            const req = NewRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", {{quote $Itr.Path}});
+            req.setHeader("X-Method-Client", {{quote $method.Name}});
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(() => {
-                return options.Transport.Do(req);
-            }).then((resObj) => {
+            options.Transport.Do(req, options.Timeout).then((resObj) => {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then((resModel) => {
                 resolve(resModel);
@@ -592,7 +585,7 @@ export function {{$method.Name}}Client(options) {
             });
         });
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .InputWithErrorMethods}}
@@ -612,23 +605,22 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
-{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
 
-{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
@@ -663,41 +655,41 @@ export function {{$method.Name}}Client(options) {
         throw new Error("options must provide a ServiceAddr pointing to service http server");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
     if (!options.Transport) options.Transport = HTTPTransport;
 
     return function {{$method.Name}}RPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            const req = newRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
-            req.setHeader("X-Client", "JS-RPKIT")
-            req.setHeader("X-Service", BaseServiceName)
-            req.setHeader("X-Package", {{quote $Itr.Path}})
-            req.setHeader("X-Method-Client", {{quote $method.Name}})
-            req.setHeader("X-Method-ClientService", MethodServiceName)
-            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute)
-            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath)
-            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+            const req = NewRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", {{quote $Itr.Path}});
+            req.setHeader("X-Method-Client", {{quote $method.Name}});
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
             const encoded = options.Encoder.Encode(req, model);
             if (!(encoded instanceof Promise)) {
                 reject(new Error("Encoder.Encode does not return a Promise"));
-                return
+                return;
             }
 
             encoded.then((req) => {
-                return options.Transport.Do(req);
+                return options.Transport.Do(req, options.Timeout);
             }).then((resObj) => {
-                resolve(true);
+                resolve(null);
             }).catch((err) => {
                 reject(err);
             });
         });
     };
-};
+}
 
 {{ end }}
 {{range $_, $method := .InputAndOutputMethods}}
@@ -717,29 +709,28 @@ export const {{$method.Name}}ServiceRoutePath = "/rpkit/{{$ServiceName}}.{{$Itr.
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+}`;
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
@@ -774,33 +765,33 @@ export function {{$method.Name}}Client(options) {
         throw new Error("options must provide a ServiceAddr pointing to service http server");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
     if (!options.Transport) options.Transport = HTTPTransport;
 
     return function {{$method.Name}}RPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            const req = newRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
-            req.setHeader("X-Client", "JS-RPKIT")
-            req.setHeader("X-Service", BaseServiceName)
-            req.setHeader("X-Package", {{quote $Itr.Path}})
-            req.setHeader("X-Method-Client", {{quote $method.Name}})
-            req.setHeader("X-Method-ClientService", MethodServiceName)
-            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute)
-            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath)
-            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+            const req = NewRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", {{quote $Itr.Path}});
+            req.setHeader("X-Method-Client", {{quote $method.Name}});
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
             const encoded = options.Encoder.Encode(req, model);
             if (!(encoded instanceof Promise)) {
                 reject(new Error("Encoder.Encode does not return a Promise"));
-                return
+                return;
             }
 
             encoded.then((req) => {
-                return options.Transport.Do(req);
+                return options.Transport.Do(req, options.Timeout);
             }).then((resObj) => {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then((resModel) => {
@@ -810,7 +801,7 @@ export function {{$method.Name}}Client(options) {
             });
         });
     };
-};
+}
 
 {{end}}
 {{range $_, $method := .InputAndOutputWithErrorMethods}}
@@ -830,30 +821,29 @@ export const {{$method.Name}}ServiceRoutePath = "/{{$ServiceName}}/{{$Itr.Object
 // {{$method.Name}}ContractSource contains the source version of expected method contract.
 export const {{$method.Name}}ContractSource = `type {{$method.Name}}MethodContract interface {
 	{{$method.Name}}({{$method.ArgumentList true}}) {{ if $method.HasReturns }}{{if equal $method.TotalReturns 1}} {{$method.ReturnList true}} {{else}} ({{$method.ReturnList true}}) {{end}} {{end}}
-}
-`;
+}`;
 
-{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}
-// {{$method.Name}}Method{{$retType.Type | capitalize}}Factory defines a function to
+{{$retType := $method.GetReturnsAt 0}}{{ if $retType.IsStruct}}{{ $name := getTypeName $retType.ExType $retType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of return value of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$retType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $retType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 0 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
 // {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
-{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}
-// {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory defines a function to
+{{ $argsType := $method.GetArgsAt 1 }}{{if $argsType.IsStruct}}{{ $name := getTypeName $argsType.ExType $argsType}}
+// {{$method.Name}}Method{{$name | capitalize}}Factory defines a function to
 // return a default object containing default field values of argument of
-// {{$method.Name}} method.
-export function {{$method.Name}}Method{{$argsType.Type | capitalize}}Factory(){
+// {{$method.Name}} method. 
+export function {{$method.Name}}Method{{$name | capitalize}}Factory(){
     return JSON.parse({{ $argsType.GetStructJSON | quote}});
 }
 {{end}}
@@ -888,33 +878,33 @@ export function {{$method.Name}}Client(options) {
         throw new Error("options must provide a ServiceAddr pointing to service http server");
     }
 
-    if (!options.Headers) options.Headers = {};
+    if (!options.Headers) options.Headers = {}
     if (!options.Encoder) options.Encoder = JSONEncoding;
     if (!options.Decoder) options.Decoder = JSONEncoding;
     if (!options.Transport) options.Transport = HTTPTransport;
 
     return function {{$method.Name}}RPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            const req = newRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
-            req.setHeader("X-Client", "JS-RPKIT")
-            req.setHeader("X-Service", BaseServiceName)
-            req.setHeader("X-Package", {{quote $Itr.Path}})
-            req.setHeader("X-Method-Client", {{quote $method.Name}})
-            req.setHeader("X-Method-ClientService", MethodServiceName)
-            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute)
-            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath)
-            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}")
+            const req = NewRequest(options.ServiceAddr, {{$method.Name}}ServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", {{quote $Itr.Path}});
+            req.setHeader("X-Method-Client", {{quote $method.Name}});
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", {{$method.Name}}ServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", {{$method.Name}}ServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "{{$Itr.Package}}.{{$Itr.Object.Name.Name}}");
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
             const encoded = options.Encoder.Encode(req, model);
             if (!(encoded instanceof Promise)) {
                 reject(new Error("Encoder.Encode does not return a Promise"));
-                return
+                return;
             }
 
             encoded.then((req) => {
-                return options.Transport.Do(req);
+                return options.Transport.Do(req, options.Timeout);
             }).then((resObj) => {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then((resModel) => {
@@ -924,6 +914,6 @@ export function {{$method.Name}}Client(options) {
             });
         });
     };
-};
+}
 {{end}}
 

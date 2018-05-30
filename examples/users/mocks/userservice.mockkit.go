@@ -15,6 +15,10 @@ import (
 // when the respective functions of the struct is called.
 type UserServiceImpl struct{
     
+    PokeFunc func() ()
+    
+    PokeAgainFunc func() (error)
+    
     GetFunc func(var1 context.Context) (int,error)
     
     CreateFunc func(var1 context.Context,var2 users.NewUser) (users.User,error)
@@ -29,6 +33,20 @@ type UserServiceImpl struct{
     
 }
 
+
+// Poke implements the UserService.Poke method for UserService interface.
+// It calls the UserServiceImpl.PokeFunc field underneath.
+func (impl UserServiceImpl) Poke() { 
+    impl.PokeFunc()
+    
+}
+
+// PokeAgain implements the UserService.PokeAgain method for UserService interface.
+// It calls the UserServiceImpl.PokeAgainFunc field underneath.
+func (impl UserServiceImpl) PokeAgain() (error){ 
+    ret1 := impl.PokeAgainFunc()
+    return ret1
+}
 
 // Get implements the UserService.Get method for UserService interface.
 // It calls the UserServiceImpl.GetFunc field underneath.

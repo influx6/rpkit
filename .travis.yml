@@ -10,5 +10,5 @@ script:
 jobs:
  include:
   - stage: test
-    script: go test -v ./internal/tests/...
+    script: go test -v ./examples/users/tests/goside/...
 

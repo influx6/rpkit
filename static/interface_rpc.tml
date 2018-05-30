@@ -419,7 +419,8 @@ type ResponseValidation func(*http.Response) error
 type JSONErrorResponse struct{
 	Type string `json:"type"`
 	Code int `json:"code"`
-	Err []byte `json:"err"`
+	ErrData []byte `json:"err_data"`
+	ErrMessage string `json:"err_message"`
 	Message string `json:"message"`
 	Meta map[string]interface{} `json:"meta"`
 }
@@ -429,7 +430,7 @@ func (jse JSONErrorResponse) Error() string {
     if encoded, err := json.Marshal(jse); err == nil {
         return string(encoded)
     }
-	return jse.Message + " : " + string(jse.Err)
+	return jse.Message + " : " + string(jse.ErrMessage)
 }
 
 // Hook defines a interface for having access to different areas of
@@ -3886,11 +3887,10 @@ func jsonWriteError(w http.ResponseWriter, itype string, code int, message strin
 	res.Message = message
 
 	if err != nil {
-	  if data, badErr := json.Marshal(err); badErr == nil {
-	    res.Err = data
-	  }else{
-	    res.Err = []byte(err.Error())
-	  }
+        res.ErrMessage = err.Error()
+        if data, badErr := json.Marshal(err); badErr == nil {
+            res.ErrData = data
+        }
 	}
 
 	w.WriteHeader(code)

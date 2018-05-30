@@ -4,11 +4,11 @@ RPKit
 [![Travis Build Status](https://travis-ci.org/gokit/rpkit.svg?branch=master)](https://travis-ci.org/gokit/rpkit#)
 [![CircleCI](https://circleci.com/gh/gokit/rpkit.svg?style=svg)](https://circleci.com/gh/gokit/rpkit)
 
-RPkit implements a code generator which automatically generates a RPC-style API package, which exposes methods of an interface as both http.Handlers with associated client code that directly make requests to such to perform action of said methods.
+RPkit implements a code generator which automatically generates a RPC-style API package for you in Go and Javascript (Browser and Nodejs compatible code), which exposes methods of an interface as RPC styled methods with associated client functions. Enabling you rapidly build and prototype your API with minimal effort.
 
 It is heavily inspired by the work on [Twirp](https://github.com/twitchtv/twirp/) by the [TwitchTV Team](https://github.com/twitchtv/people). Which inspires a beautiful approach for creating RPC-APIs that work with HTTP 1.1 and uses standard request-response with method names as targets.
 
-RPKit takes these ideas and brings it into a more code friendly style, where there is no dependency on protobuff definitions, but rather on annotations marking interface declarations as code generation targets.
+RPKit takes these ideas and brings it into a friendly annotation style used in Go source ocde, where there is no dependency on protobuf definitions.
 
 ## Install
 
@@ -17,8 +17,48 @@ go get github.com/gokit/rpkit
 ```
 
 ## Examples
+When using RPkit, you simply need to have `go get` the package first, then create a annotate interface within your target golang
+source package. e.g
 
-See [Examples](./examples) for demonstrations of packages generated using rpkit which creates a full RPC-style API with client code for a interface API definition/declaration.
+
+```go
+package users
+
+import "context"
+
+type NewUser struct {
+	Name string `json:"name"`
+}
+
+type User struct {
+	ID   int     `json:"id"`
+	Name string  `json:"name"`
+	Addr string  `json:"addr"`
+	Cid  float64 `json:"cid"`
+}
+
+//@rp(js:server, js:client)
+//@implement
+type UserService interface {
+	Poke()
+	PokeAgain() error
+	Get(context.Context) (int, error)
+	Create(context.Context, NewUser) (User, error)
+	GetBy(context.Context, string) (int, error)
+	CreateUser(NewUser) (User, error)
+	GetUser(int) (User, error)
+	GetUsers(context.Context) []User
+}
+```
+
+If you look into the source code above, the annotation that marks the `UserService` interface has a target is `@rp`.
+By specifying to `@rp` the `js:server` and `js:client`, the annotation will generate both javascript code that can be
+used for both the server and client usage.
+
+
+Once done, navigate to your source file directory so we could code generate the source files for both go and javascript.
+
+See [Examples](./examples) for generated contents.
 
 ## CLI
 

@@ -1,0 +1,19 @@
+{
+    "name": "jsside",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "mocha userservicerp.test.js"
+    },
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "axios": "^0.18.0",
+        "chai": "^4.1.2",
+        "mocha": "^5.2.0"
+    },
+    "dependencies": {
+        "lodash": "^4.17.10"
+    }
+}

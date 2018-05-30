@@ -2,6 +2,7 @@ package goside
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"net/http/httptest"
@@ -21,6 +22,12 @@ import (
 var (
 	httpClient  = &http.Client{Timeout: 10 * time.Second}
 	userService = mocks.UserServiceImpl{
+		PokeFunc: func() {
+
+		},
+		PokeAgainFunc: func() error {
+			return errors.New("stop poking")
+		},
 		GetByFunc: func(ctx context.Context, var2 string) (int, error) {
 			return 1, nil
 		},
@@ -63,6 +70,36 @@ var (
 		},
 	}
 )
+
+func TestUserServiceRP_PokeAgain(t *testing.T) {
+	service := userservicerp.ServePokeAgainMethod(userService)
+
+	server := httptest.NewServer(userservicerp.NewPokeAgainServer(service, nil, http.Header{}))
+	defer server.Close()
+
+	getRCP, err := userservicerp.NewPokeAgainMethodClient(server.URL, httpClient)
+
+	assert.NoError(t, err, "Should have created GetMethod client")
+	assert.NotNil(t, getRCP, "Should have created client for Get method")
+
+	err = getRCP.PokeAgain(context.Background())
+	assert.Error(t, err)
+}
+
+func TestUserServiceRP_Poke(t *testing.T) {
+	service := userservicerp.ServePokeMethod(userService)
+
+	server := httptest.NewServer(userservicerp.NewPokeServer(service, nil, http.Header{}))
+	defer server.Close()
+
+	getRCP, err := userservicerp.NewPokeMethodClient(server.URL, httpClient)
+
+	assert.NoError(t, err, "Should have created GetMethod client")
+	assert.NotNil(t, getRCP, "Should have created client for Get method")
+
+	err = getRCP.Poke(context.Background())
+	assert.NoError(t, err, "Should have received no error response from server")
+}
 
 func TestUserServiceRP_Get(t *testing.T) {
 	service := userservicerp.ServeGetMethod(userService, userservicerp.IntTypeEncoder{

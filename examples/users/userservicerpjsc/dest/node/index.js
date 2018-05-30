@@ -114,9 +114,12 @@ Object.defineProperty(exports, "__esModule", {
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 exports.JSONErrorResponse = JSONErrorResponse;
+exports.FromPromise = FromPromise;
 exports.NewRequest = NewRequest;
+exports.PokeClient = PokeClient;
+exports.PokeAgainClient = PokeAgainClient;
 exports.GetClient = GetClient;
-exports.GetUsersMethodUserFactory = GetUsersMethodUserFactory;
+exports.GetUsersMethodUserSliceFactory = GetUsersMethodUserSliceFactory;
 exports.GetUsersClient = GetUsersClient;
 exports.CreateMethodUserFactory = CreateMethodUserFactory;
 exports.CreateMethodNewUserFactory = CreateMethodNewUserFactory;
@@ -179,40 +182,14 @@ function JSONErrorResponse(type, code, err, message, meta) {
 var JSONEncoding = exports.JSONEncoding = Object.freeze({
     Decode: function Decode(req, res, body) {
         return new Promise(function EncodePromise(resolve, reject) {
-            if (res.headers["Content-Type"].indexOf("application/json") === -1) {
+            if (res.headers["content-type"].indexOf("application/json") === -1) {
                 reject(new Error("request content type must be application/json"));
                 return;
             }
 
-            if (body instanceof buffer.Buffer) {
-                try {
-                    var content = JSON.parse(body.toString("utf8"));
-                    resolve(content);
-                } catch (e) {
-                    reject(e);
-                }
-                return;
-            }
-
-            if (typeof body === "string") {
-                try {
-                    var _content = JSON.parse(body);
-                    resolve(_content);
-                } catch (e) {
-                    reject(e);
-                }
-                return;
-            };
-
-            if ((typeof body === "undefined" ? "undefined" : _typeof(body)) === "object") {
-                resolve(body);
-                return;
-            }
-
-            reject({
-                Error: new Error("unknown content body received"),
-                Body: body
-            });
+            // Since we are using axios, any response that is valid JSON
+            // will immediately get parsed, to just return.
+            resolve(body);
         });
     },
     Encode: function Encode(req, model) {
@@ -228,6 +205,7 @@ var JSONEncoding = exports.JSONEncoding = Object.freeze({
                 return;
             }
 
+            req.end();
             resolve(req);
         });
     }
@@ -236,51 +214,56 @@ var JSONEncoding = exports.JSONEncoding = Object.freeze({
 // HTTPTransport implements a custom http transport for handling
 // request processing and response returning. This allows user
 // to plug a custom http request transport handling layer
-// as desired. An HTTPTransport must always return
+// as desired. An HTTPTransport must always return;
 // a promise. The http transport uses https://github.com/axios/axios
 // underneath.
 var HTTPTransport = exports.HTTPTransport = Object.freeze({
     Do: function Do(req, timeout) {
-        return new Promise(function RequestPromise(resolve, reject) {
-            axios.request({
-                method: "POST",
-                timeout: timeout,
-                data: req.body.join(""),
-                url: joinURL(req.base, req.url),
-                headers: lodash.merge(req.headers, { "X-Requested-With-Lib": "axios (https://github.com/axios/axios)" })
-            }).catch(function (e) {
-                if (e.response && e.response.data) {
-                    var msg = getJSONError(e.response.data);
-                    msg.axiosError = e;
-                    reject(msg);
-                    return;
-                }
+        var ops = axios.request({
+            method: "POST",
+            timeout: timeout,
+            data: req.body,
+            url: joinURL(req.base, req.url),
+            headers: lodash.merge(req.headers, { "X-Requested-With-Lib": "axios (https://github.com/axios/axios)" })
+        });
 
-                reject(e);
-            }).then(function (res) {
-                if (requestFacedInternalIssues(res)) {
-                    reject(getJSONError(res.data));
-                    return;
-                };
+        return ops.then(function (res) {
+            if (!res) {
+                return Promise.reject(new Error("received null/nil response object"));
+            }
 
-                if (requestFailed(res)) {
-                    reject(getJSONError(res.data));
-                    return;
-                };
+            if (isError(res)) {
+                return Promise.reject(res);
+            }
 
-                if (requestRedirected(res)) {
-                    reject(getJSONError(res.data));
-                    return;
-                };
+            if (requestRedirected(res) || requestFailed(res) || requestFacedInternalIssues(res)) {
+                return Promise.reject(getJSONError(res.data));
+            }
 
-                resolve(Object.freeze({
-                    res: res,
-                    body: res.data
-                }));
-            });
+            return {
+                res: res,
+                body: res.data
+            };
+        }).catch(function (e) {
+            if (e.response && e.response.data) {
+                var msg = getJSONError(e.response.data);
+                msg.original_error = e;
+                return Promise.reject(msg);
+            }
+            return Promise.reject(e);
         });
     }
 });
+
+// FromPromise returns a new Promise with the
+// function arguments passed to it. This
+// is provided to allow clients use same
+// promise as package has their are internal
+// checks and use of `instanceof` with the
+// Promise used.
+function FromPromise(rx, ry) {
+    return new Promise(rx, ry);
+}
 
 // NewRequest returns a object containing basic data related
 // to a outgoing request with associated headers to be sent along.
@@ -289,7 +272,7 @@ function NewRequest(base, url, headers) {
     var reqObj = {
         base: base,
         url: url,
-        headers: headers ? headers : {},
+        headers: headers || {},
         body: null,
         setHeader: function setHeader(key, value) {
             reqObj.headers[key] = value;
@@ -302,58 +285,82 @@ function NewRequest(base, url, headers) {
 
             reqObj.body = [];
             reqObj.body.push(data);
+        },
+        end: function end() {
+            if (reqObj.body) reqObj.body = reqObj.body.join("");
         }
     };
 
     return reqObj;
-};
+}
+
+function isError(err) {
+    if (lodash.isError(err)) {
+        return true;
+    }
+    return err instanceof Error;
+}
 
 // joinURL joins provided string paths into a whole,
 // ensuring to add the necessary slash in between parts.
 function joinURL(base, to) {
-    if (base.endsWith("/")) {
-        return "" + base + to;
+    var toURL = to;
+    if (toURL.startsWith("/")) {
+        toURL = to.substring(1);
     }
 
-    return base + "/" + to;
-};
+    if (base.endsWith("/")) {
+        return ("" + base + toURL).trim();
+    }
 
-// prefixSlash prefixes a forward slash to end of provided
+    return (base + "/" + toURL).trim();
+}
+
+// prefixSlash prefixes a forward slash to the beginning of provided
 // string.
 function prefixSlash(c) {
+    if (c.startsWith("/")) {
+        return c;
+    }
+    return "/" + c;
+}
+
+// suffixSlash suffixes a forward slash to end of provided
+// string.
+function suffixSlash(c) {
     if (c.endsWith("/")) {
         return c;
     }
-    return c + ";";
-};
+    return "" + c;
+}
 
 function requestRedirected(res) {
     if (res.status >= 300 && res.status <= 308) {
         return true;
     }
     return false;
-};
+}
 
 function requestFailed(res) {
     if (res.status >= 400 && res.status < 500) {
         return true;
-    };
+    }
     return false;
-};
+}
 
 function requestFacedInternalIssues(res) {
     if (res.status >= 500 && res.status < 600) {
         return true;
-    };
+    }
     return false;
-};
+}
 
 function requestSucceeded(res) {
     if (res.status >= 200 && res.status <= 299) {
         return true;
-    };
+    }
     return false;
-};
+}
 
 function getJSONError(body) {
     if ((typeof body === "undefined" ? "undefined" : _typeof(body)) === "object") {
@@ -378,7 +385,155 @@ function getJSONError(body) {
     }
 
     return res;
-};
+}
+
+// /////////////////////////////////////////////////////////////////
+// RP: No Arguments and No Return Methods
+// Method: Poke
+// Source: github.com/gokit/rpkit/examples/users
+// Handler: users.UserService.Poke
+// /////////////////////////////////////////////////////////////////
+
+// PokeServiceRoute defines the route for the Poke method.
+var PokeServiceRoute = exports.PokeServiceRoute = "users.UserService/Poke";
+
+// PokeServiceRoutePath defines the full method path for the Poke method.
+var PokeServiceRoutePath = exports.PokeServiceRoutePath = "/rpkit/users.UserService/Poke";
+
+// PokeContractSource contains the source version of expected method contract.
+var PokeContractSource = exports.PokeContractSource = "type PokeMethodContract interface {\n\tPoke() \n}";
+
+// PokeClient returns a RPC method to be called to handle requests
+// for the Poke method of "github.com/gokit/rpkit/examples/users".
+function PokeClient(options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && _typeof(options.Headers) !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder method");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode method");
+    }
+
+    // Transport must be function that returns promises from their calls.
+    if (options.Transport && typeof options.Transport.Do !== "function") {
+        throw new Error("Transport must provide Do method");
+    }
+
+    if (!options.ServiceAddr) {
+        throw new Error("options must provide a ServiceAddr pointing to service http server");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+    if (!options.Transport) options.Transport = HTTPTransport;
+
+    return function PokeRPC() {
+        return new Promise(function GetUserPromise(resolve, reject) {
+            var req = NewRequest(options.ServiceAddr, PokeServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
+            req.setHeader("X-Method-Client", "Poke");
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", PokeServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", PokeServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "users.UserService");
+
+            if (options.BeforeRequest) options.BeforeRequest(req);
+
+            options.Transport.Do(req, options.Timeout).then(function (resObj) {
+                resolve(null);
+            }).catch(function (err) {
+                reject(err);
+            });
+        });
+    };
+}
+
+// /////////////////////////////////////////////////////////////////
+// RP: Error Returning methods
+// Method: PokeAgain
+// Source: github.com/gokit/rpkit/examples/users
+// Handler: users.UserService.PokeAgain
+// /////////////////////////////////////////////////////////////////
+
+// PokeAgainServiceRoute defines the route for the PokeAgain method.
+var PokeAgainServiceRoute = exports.PokeAgainServiceRoute = "users.UserService/PokeAgain";
+
+// PokeAgainServiceRoutePath defines the full method path for the PokeAgain method.
+var PokeAgainServiceRoutePath = exports.PokeAgainServiceRoutePath = "/rpkit/users.UserService/PokeAgain";
+
+// PokeAgainContractSource contains the source version of expected method contract.
+var PokeAgainContractSource = exports.PokeAgainContractSource = "type PokeAgainMethodContract interface {\n\tPokeAgain()  error  \n}";
+
+// PokeAgainClient returns a RPC method to be called to handle requests
+// for the PokeAgain method of "github.com/gokit/rpkit/examples/users".
+function PokeAgainClient(options) {
+    if (options.BeforeRequest && typeof options.BeforeRequest !== "function") {
+        throw new Error("options.BeforeRequest must be a function");
+    }
+
+    if (options.Headers && _typeof(options.Headers) !== "object") {
+        throw new Error("options.Headers must be a object map");
+    }
+
+    // encoders must be functions that returns promises from their Encode methods.
+    if (options.Encoder && typeof options.Encoder.Encode !== "function") {
+        throw new Error("Encoder must provide Encoder method");
+    }
+
+    // decoders must be functions that returns promises from their Encode methods.
+    if (options.Decoder && typeof options.Decoder.Decode !== "function") {
+        throw new Error("Decoder must provide Decode method");
+    }
+
+    // Transport must be function that returns promises from their calls.
+    if (options.Transport && typeof options.Transport.Do !== "function") {
+        throw new Error("Transport must provide Do method");
+    }
+
+    if (!options.ServiceAddr) {
+        throw new Error("options must provide a ServiceAddr pointing to service http server");
+    }
+
+    if (!options.Headers) options.Headers = {};
+    if (!options.Encoder) options.Encoder = JSONEncoding;
+    if (!options.Decoder) options.Decoder = JSONEncoding;
+    if (!options.Transport) options.Transport = HTTPTransport;
+
+    return function PokeAgainRPC() {
+        return new Promise(function GetUserPromise(resolve, reject) {
+            var req = NewRequest(options.ServiceAddr, PokeAgainServiceRoutePath, options.Headers);
+            req.setHeader("X-Client", "JS-RPKIT");
+            req.setHeader("X-Service", BaseServiceName);
+            req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
+            req.setHeader("X-Method-Client", "PokeAgain");
+            req.setHeader("X-Method-ClientService", MethodServiceName);
+            req.setHeader("X-API-Client-Route", PokeAgainServiceRoute);
+            req.setHeader("X-API-Client-Route-Path", PokeAgainServiceRoutePath);
+            req.setHeader("X-Client-Package-Interface", "users.UserService");
+
+            if (options.BeforeRequest) options.BeforeRequest(req);
+
+            options.Transport.Do(req, options.Timeout).then(function (resObj) {
+                resolve(null);
+            }).catch(function (err) {
+                reject(err);
+            });
+        });
+    };
+}
 
 // /////////////////////////////////////////////////////////////////
 // RP: Output with Returning Error methods
@@ -394,7 +549,7 @@ var GetServiceRoute = exports.GetServiceRoute = "users.UserService/Get";
 var GetServiceRoutePath = exports.GetServiceRoutePath = "/rpkit/users.UserService/Get";
 
 // GetContractSource contains the source version of expected method contract.
-var GetContractSource = exports.GetContractSource = "type GetMethodContract interface {\n\tGet(var1 context.Context)  (int,error)  \n}\n";
+var GetContractSource = exports.GetContractSource = "type GetMethodContract interface {\n\tGet(var1 context.Context)  (int,error)  \n}";
 
 // GetClient returns a RPC method to be called to handle requests
 // for the Get method of "github.com/gokit/rpkit/examples/users".
@@ -433,7 +588,7 @@ function GetClient(options) {
 
     return function GetRPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -445,9 +600,7 @@ function GetClient(options) {
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(function () {
-                return options.Transport.Do(req);
-            }).then(function (resObj) {
+            options.Transport.Do(req, options.Timeout).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
                 resolve(resModel);
@@ -456,7 +609,7 @@ function GetClient(options) {
             });
         });
     };
-};
+}
 
 // /////////////////////////////////////////////////////////////////
 // RP: Output Returning No Error methods
@@ -472,13 +625,13 @@ var GetUsersServiceRoute = exports.GetUsersServiceRoute = "users.UserService/Get
 var GetUsersServiceRoutePath = exports.GetUsersServiceRoutePath = "/rpkit/users.UserService/GetUsers";
 
 // GetUsersContractSource contains the source version of expected method contract.
-var GetUsersContractSource = exports.GetUsersContractSource = "type GetUsersMethodContract interface {\n\tGetUsers(var1 context.Context)  users.User  \n}\n";
+var GetUsersContractSource = exports.GetUsersContractSource = "type GetUsersMethodContract interface {\n\tGetUsers(var1 context.Context)  []users.User  \n}";
 
-// GetUsersMethodUserFactory defines a function to
+// GetUsersMethodUserSliceFactory defines a function to
 // return a default object containing default field values of return value of
 // GetUsers method.
-function GetUsersMethodUserFactory() {
-    return JSON.parse("{\n\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0\n\n}");
+function GetUsersMethodUserSliceFactory() {
+    return JSON.parse("{\n\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\"\n\n}");
 }
 
 // GetUsersClient returns a RPC method to be called to handle requests
@@ -518,7 +671,7 @@ function GetUsersClient(options) {
 
     return function GetUsersRPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetUsersServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetUsersServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -530,9 +683,7 @@ function GetUsersClient(options) {
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(function () {
-                return options.Transport.Do(req);
-            }).then(function (resObj) {
+            options.Transport.Do(req, options.Timeout).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
                 resolve(resModel);
@@ -541,7 +692,7 @@ function GetUsersClient(options) {
             });
         });
     };
-};
+}
 
 // /////////////////////////////////////////////////////////////////
 // RP: Input And Output Returning Error methods
@@ -557,7 +708,7 @@ var CreateServiceRoute = exports.CreateServiceRoute = "users.UserService/Create"
 var CreateServiceRoutePath = exports.CreateServiceRoutePath = "/users/UserService/Create";
 
 // CreateContractSource contains the source version of expected method contract.
-var CreateContractSource = exports.CreateContractSource = "type CreateMethodContract interface {\n\tCreate(var1 context.Context,var2 users.NewUser)  (users.User,error)  \n}\n";
+var CreateContractSource = exports.CreateContractSource = "type CreateMethodContract interface {\n\tCreate(var1 context.Context,var2 users.NewUser)  (users.User,error)  \n}";
 
 // CreateMethodUserFactory defines a function to
 // return a default object containing default field values of return value of
@@ -568,7 +719,7 @@ function CreateMethodUserFactory() {
 
 // CreateMethodNewUserFactory defines a function to
 // return a default object containing default field values of argument of
-// Create method.
+// Create method. 
 function CreateMethodNewUserFactory() {
     return JSON.parse("{\n\n\n    \"name\":\t\"\"\n\n}");
 }
@@ -610,7 +761,7 @@ function CreateClient(options) {
 
     return function CreateRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, CreateServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, CreateServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -629,7 +780,7 @@ function CreateClient(options) {
             }
 
             encoded.then(function (req) {
-                return options.Transport.Do(req);
+                return options.Transport.Do(req, options.Timeout);
             }).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
@@ -639,7 +790,7 @@ function CreateClient(options) {
             });
         });
     };
-};
+}
 
 // /////////////////////////////////////////////////////////////////
 // RP: Input And Output Returning Error methods
@@ -655,7 +806,7 @@ var GetByServiceRoute = exports.GetByServiceRoute = "users.UserService/GetBy";
 var GetByServiceRoutePath = exports.GetByServiceRoutePath = "/users/UserService/GetBy";
 
 // GetByContractSource contains the source version of expected method contract.
-var GetByContractSource = exports.GetByContractSource = "type GetByMethodContract interface {\n\tGetBy(var1 context.Context,var2 string)  (int,error)  \n}\n";
+var GetByContractSource = exports.GetByContractSource = "type GetByMethodContract interface {\n\tGetBy(var1 context.Context,var2 string)  (int,error)  \n}";
 
 // GetByClient returns a RPC method to be called to handle requests
 // for the GetBy method of "github.com/gokit/rpkit/examples/users".
@@ -694,7 +845,7 @@ function GetByClient(options) {
 
     return function GetByRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetByServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetByServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -713,7 +864,7 @@ function GetByClient(options) {
             }
 
             encoded.then(function (req) {
-                return options.Transport.Do(req);
+                return options.Transport.Do(req, options.Timeout);
             }).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
@@ -723,7 +874,7 @@ function GetByClient(options) {
             });
         });
     };
-};
+}
 
 // /////////////////////////////////////////////////////////////////
 // RP: Input And Output Returning Error methods
@@ -739,13 +890,13 @@ var CreateUserServiceRoute = exports.CreateUserServiceRoute = "users.UserService
 var CreateUserServiceRoutePath = exports.CreateUserServiceRoutePath = "/users/UserService/CreateUser";
 
 // CreateUserContractSource contains the source version of expected method contract.
-var CreateUserContractSource = exports.CreateUserContractSource = "type CreateUserMethodContract interface {\n\tCreateUser(var1 users.NewUser)  (users.User,error)  \n}\n";
+var CreateUserContractSource = exports.CreateUserContractSource = "type CreateUserMethodContract interface {\n\tCreateUser(var1 users.NewUser)  (users.User,error)  \n}";
 
 // CreateUserMethodUserFactory defines a function to
 // return a default object containing default field values of return value of
 // CreateUser method.
 function CreateUserMethodUserFactory() {
-    return JSON.parse("{\n\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0\n\n}");
+    return JSON.parse("{\n\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\"\n\n}");
 }
 
 // CreateUserMethodNewUserFactory defines a function to
@@ -792,7 +943,7 @@ function CreateUserClient(options) {
 
     return function CreateUserRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, CreateUserServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, CreateUserServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -811,7 +962,7 @@ function CreateUserClient(options) {
             }
 
             encoded.then(function (req) {
-                return options.Transport.Do(req);
+                return options.Transport.Do(req, options.Timeout);
             }).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
@@ -821,7 +972,7 @@ function CreateUserClient(options) {
             });
         });
     };
-};
+}
 
 // /////////////////////////////////////////////////////////////////
 // RP: Input And Output Returning Error methods
@@ -837,7 +988,7 @@ var GetUserServiceRoute = exports.GetUserServiceRoute = "users.UserService/GetUs
 var GetUserServiceRoutePath = exports.GetUserServiceRoutePath = "/users/UserService/GetUser";
 
 // GetUserContractSource contains the source version of expected method contract.
-var GetUserContractSource = exports.GetUserContractSource = "type GetUserMethodContract interface {\n\tGetUser(var1 int)  (users.User,error)  \n}\n";
+var GetUserContractSource = exports.GetUserContractSource = "type GetUserMethodContract interface {\n\tGetUser(var1 int)  (users.User,error)  \n}";
 
 // GetUserMethodUserFactory defines a function to
 // return a default object containing default field values of return value of
@@ -883,7 +1034,7 @@ function GetUserClient(options) {
 
     return function GetUserRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetUserServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetUserServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -902,7 +1053,7 @@ function GetUserClient(options) {
             }
 
             encoded.then(function (req) {
-                return options.Transport.Do(req);
+                return options.Transport.Do(req, options.Timeout);
             }).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
@@ -912,7 +1063,7 @@ function GetUserClient(options) {
             });
         });
     };
-};
+}
 
 /***/ }),
 

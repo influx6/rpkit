@@ -21322,7 +21322,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 exports.JSONErrorResponse = JSONErrorResponse;
 exports.NewRequest = NewRequest;
 exports.GetClient = GetClient;
-exports.GetUsersMethodUserFactory = GetUsersMethodUserFactory;
+exports.GetUsersMethodUserSliceFactory = GetUsersMethodUserSliceFactory;
 exports.GetUsersClient = GetUsersClient;
 exports.CreateMethodUserFactory = CreateMethodUserFactory;
 exports.CreateMethodNewUserFactory = CreateMethodNewUserFactory;
@@ -21442,7 +21442,7 @@ var JSONEncoding = exports.JSONEncoding = Object.freeze({
 // HTTPTransport implements a custom http transport for handling
 // request processing and response returning. This allows user
 // to plug a custom http request transport handling layer
-// as desired. An HTTPTransport must always return
+// as desired. An HTTPTransport must always return;
 // a promise. The http transport uses https://github.com/axios/axios
 // underneath.
 var HTTPTransport = exports.HTTPTransport = Object.freeze({
@@ -21451,7 +21451,7 @@ var HTTPTransport = exports.HTTPTransport = Object.freeze({
             axios.request({
                 method: "POST",
                 timeout: timeout,
-                data: req.body.join(""),
+                data: req.body ? req.body.join("") : null,
                 url: joinURL(req.base, req.url),
                 headers: lodash.merge(req.headers, { "X-Requested-With-Lib": "axios (https://github.com/axios/axios)" })
             }).catch(function (e) {
@@ -21464,6 +21464,11 @@ var HTTPTransport = exports.HTTPTransport = Object.freeze({
 
                 reject(e);
             }).then(function (res) {
+                if (isError(res)) {
+                    reject(res);
+                    return;
+                }
+
                 if (requestFacedInternalIssues(res)) {
                     reject(getJSONError(res.data));
                     return;
@@ -21495,7 +21500,7 @@ function NewRequest(base, url, headers) {
     var reqObj = {
         base: base,
         url: url,
-        headers: headers ? headers : {},
+        headers: headers || {},
         body: null,
         setHeader: function setHeader(key, value) {
             reqObj.headers[key] = value;
@@ -21512,6 +21517,13 @@ function NewRequest(base, url, headers) {
     };
 
     return reqObj;
+};
+
+function isError(err) {
+    if (lodash.isError(err)) {
+        return true;
+    }
+    return err instanceof Error;
 };
 
 // joinURL joins provided string paths into a whole,
@@ -21639,7 +21651,7 @@ function GetClient(options) {
 
     return function GetRPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -21651,9 +21663,7 @@ function GetClient(options) {
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(function () {
-                return options.Transport.Do(req);
-            }).then(function (resObj) {
+            return options.Transport.Do(req).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
                 resolve(resModel);
@@ -21678,12 +21688,12 @@ var GetUsersServiceRoute = exports.GetUsersServiceRoute = "users.UserService/Get
 var GetUsersServiceRoutePath = exports.GetUsersServiceRoutePath = "/rpkit/users.UserService/GetUsers";
 
 // GetUsersContractSource contains the source version of expected method contract.
-var GetUsersContractSource = exports.GetUsersContractSource = "type GetUsersMethodContract interface {\n\tGetUsers(var1 context.Context)  users.User  \n}\n";
+var GetUsersContractSource = exports.GetUsersContractSource = "type GetUsersMethodContract interface {\n\tGetUsers(var1 context.Context)  []users.User  \n}\n";
 
-// GetUsersMethodUserFactory defines a function to
+// GetUsersMethodUserSliceFactory defines a function to
 // return a default object containing default field values of return value of
 // GetUsers method.
-function GetUsersMethodUserFactory() {
+function GetUsersMethodUserSliceFactory() {
     return JSON.parse("{\n\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0\n\n}");
 }
 
@@ -21724,7 +21734,7 @@ function GetUsersClient(options) {
 
     return function GetUsersRPC() {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetUsersServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetUsersServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -21736,9 +21746,7 @@ function GetUsersClient(options) {
 
             if (options.BeforeRequest) options.BeforeRequest(req);
 
-            Promise.resolve(true).then(function () {
-                return options.Transport.Do(req);
-            }).then(function (resObj) {
+            return options.Transport.Do(req).then(function (resObj) {
                 return options.Decoder.Decode(req, resObj.res, resObj.body);
             }).then(function (resModel) {
                 resolve(resModel);
@@ -21769,12 +21777,12 @@ var CreateContractSource = exports.CreateContractSource = "type CreateMethodCont
 // return a default object containing default field values of return value of
 // Create method.
 function CreateMethodUserFactory() {
-    return JSON.parse("{\n\n\n    \"id\":\t0,\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0\n\n}");
+    return JSON.parse("{\n\n\n    \"name\":\t\"\",\n\n    \"addr\":\t\"\",\n\n    \"cid\":\t0.0,\n\n    \"id\":\t0\n\n}");
 }
 
 // CreateMethodNewUserFactory defines a function to
 // return a default object containing default field values of argument of
-// Create method.
+// Create method. 
 function CreateMethodNewUserFactory() {
     return JSON.parse("{\n\n\n    \"name\":\t\"\"\n\n}");
 }
@@ -21816,7 +21824,7 @@ function CreateClient(options) {
 
     return function CreateRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, CreateServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, CreateServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -21900,7 +21908,7 @@ function GetByClient(options) {
 
     return function GetByRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetByServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetByServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -21998,7 +22006,7 @@ function CreateUserClient(options) {
 
     return function CreateUserRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, CreateUserServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, CreateUserServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");
@@ -22089,7 +22097,7 @@ function GetUserClient(options) {
 
     return function GetUserRPC(model) {
         return new Promise(function GetUserPromise(resolve, reject) {
-            var req = newRequest(options.ServiceAddr, GetUserServiceRoutePath, options.Headers);
+            var req = NewRequest(options.ServiceAddr, GetUserServiceRoutePath, options.Headers);
             req.setHeader("X-Client", "JS-RPKIT");
             req.setHeader("X-Service", BaseServiceName);
             req.setHeader("X-Package", "github.com/gokit/rpkit/examples/users");

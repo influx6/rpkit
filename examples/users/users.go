@@ -16,6 +16,8 @@ type User struct {
 //@rp(js:server, js:client)
 //@implement
 type UserService interface {
+	Poke()
+	PokeAgain() error
 	Get(context.Context) (int, error)
 	Create(context.Context, NewUser) (User, error)
 	GetBy(context.Context, string) (int, error)

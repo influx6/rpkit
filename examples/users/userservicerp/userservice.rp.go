@@ -419,7 +419,8 @@ type ResponseValidation func(*http.Response) error
 type JSONErrorResponse struct{
 	Type string `json:"type"`
 	Code int `json:"code"`
-	Err []byte `json:"err"`
+	ErrData []byte `json:"err_data"`
+	ErrMessage string `json:"err_message"`
 	Message string `json:"message"`
 	Meta map[string]interface{} `json:"meta"`
 }
@@ -429,7 +430,7 @@ func (jse JSONErrorResponse) Error() string {
     if encoded, err := json.Marshal(jse); err == nil {
         return string(encoded)
     }
-	return jse.Message + " : " + string(jse.Err)
+	return jse.Message + " : " + string(jse.ErrMessage)
 }
 
 // Hook defines a interface for having access to different areas of
@@ -453,6 +454,740 @@ type HTTPClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
+//****************************************************************************
+// RP: No Arguments and No Return Methods
+// Method: Poke
+// Source: github.com/gokit/rpkit/examples/users
+// Handler: users.UserService.Poke
+//****************************************************************************
+
+// PokeServiceRoute defines the route for the Poke method.
+const PokeServiceRoute = "users.UserService/Poke"
+
+// PokeServiceRoutePath defines the full method path for the Poke method.
+const PokeServiceRoutePath = "/rpkit/users.UserService/Poke"
+
+// pokeServiceRoutePathURL defines a parsed path for the Poke, it
+// ensures the created path is valid as a url.
+var pokeServiceRoutePathURL = mustSimpleParseURL(PokeServiceRoutePath)
+
+// PokeContractSource contains the source version of expected method contract.
+const PokeContractSource = `type PokeMethodContract interface {
+	Poke() 
+}
+`
+
+// PokeMethodContract defines a contract interface for method "Poke"
+// provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type PokeMethodContract interface{
+	Poke() 
+}
+
+// PokeMethodService defines the returned signature by the ServicePoke
+// which executes it's internal behaviour based off on it's PokeMethodContract.
+type PokeMethodService func(context.Context) error
+
+// ServePokeMethod implements the core contract behaviour to service "Poke"
+// from "users.UserService" in "github.com/gokit/rpkit/examples/users". It's job is to provide a pluggable function,
+// that can then be used within any transport layer, to said execute behaviour of method as a service.
+func ServePokeMethod(provider PokeMethodContract) PokeMethodService {
+	return func(ctx context.Context) error {
+		
+		provider.Poke()
+		
+		return nil
+	}
+}
+
+// PokeClientContract defines a contract interface for clients to make request to PokeServer.
+type PokeClientContract interface {
+	Poke(ctx context.Context, ) error
+}
+
+// NewPokeMethodClient returns a new PokeMethodContract it relies on
+// NewPokeMethodContractClient.
+func NewPokeMethodClient(addr string, client HTTPClient) (PokeClientContract, error) {
+	return NewPokeMethodContractClient(addr, client, nil, nil)
+}
+
+// NewPokeMethodContractClient returns a new PokeMethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a PokeServer to
+// perform action as specified by contract.
+func NewPokeMethodContractClient(addr string, client HTTPClient, act ActWithRequest, resv ResponseValidation) (PokeClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return implPokeClient{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type implPokeClient struct {
+	rootURL *url.URL
+	client HTTPClient
+	actor ActWithRequest
+	resval ResponseValidation
+}
+
+// Poke makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp implPokeClient) Poke(ctx context.Context, ) error{
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference(pokeServiceRoutePathURL)
+	
+	ctx = WithRequestMethod(ctx, "POST")
+	ctx = WithClientRequestURI(ctx, targetURL.String())
+	ctx = WithRequestTransport(ctx, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return err
+	}
+	req = req.WithContext(ctx)
+
+	if header, err := CtxCustomHeader(ctx); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+	
+	ctx = WithRequest(ctx, req)
+	ctx = WithRequestCookies(ctx, req.Cookies())
+	ctx = WithRequestHeader(ctx, req.Header)
+	ctx = WithRequestAcceptsType(ctx, req.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, req.Header.Get("Content-Type"))
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+	
+	ctx = WithResponse(ctx, res)
+	ctx = WithResponseCookies(ctx, res.Cookies())
+	ctx = WithResponseHeader(ctx, res.Header)
+	ctx = WithResponseContentType(ctx, res.Header.Get("Content-Type"))
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
+			return jsonErr
+		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
+			return jsonErr
+		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		jsonErr, err := loadJSONError(res.Body)
+		if err == nil {
+			return jsonErr
+		}
+		log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
+		return ErrServerRejectedRequest
+	}
+	
+
+	return nil
+}
+
+// PokeServer implements a http.Handler for servicing the method Poke
+// from users.UserService.
+type PokeServer interface {
+	http.Handler
+}
+
+type implPokeHandler struct {
+	hook Hook
+	headers http.Header
+	service PokeMethodService
+}
+
+// NewPokeServer returns a new instance of the HTTPHandler which services all
+// http requests for giving method users.UserService.Poke.
+func NewPokeServer(service PokeMethodService, hook Hook, headers http.Header) PokeServer {
+	return implPokeHandler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "Poke".
+func (impl implPokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithRequestCookies(ctx, r.Cookies())
+	ctx = WithResponseHeader(ctx, w.Header())
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, "github.com/gokit/rpkit/examples/users")
+	ctx = WithServiceSourcePackageName(ctx, "users")
+	ctx = WithServiceMethodName(ctx, "Poke")
+	ctx = WithServiceMethodPath(ctx, PokeServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, PokeServiceRoutePath)
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": "github.com/gokit/rpkit/examples/users",
+			"api_base": BaseServiceName,
+			"method": "Poke",
+			"api_service": MethodServiceName,
+			"route": PokeServiceRoute,
+			"api": "users.UserService",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+		
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/users")
+		w.Header().Add("X-Method", "Poke")
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", PokeServiceRoute)
+		w.Header().Add("X-Package-Interface", "users.UserService")
+
+		w.WriteHeader(http.StatusNoContent)
+		
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
+		return
+	}
+
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), PokeServiceRoutePath) {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+PokeServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": "github.com/gokit/rpkit/examples/users",
+			"api_base": BaseServiceName,
+			"method": "Poke",
+			"api_service": MethodServiceName,
+			"route": PokeServiceRoute,
+			"api": "users.UserService",
+		})
+		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": "github.com/gokit/rpkit/examples/users",
+					"api_base": BaseServiceName,
+					"method": "Poke",
+					"api_service": MethodServiceName,
+					"route": PokeServiceRoute,
+					"api": "users.UserService",
+				})
+				return
+			}
+		}
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/users")
+	w.Header().Add("X-Method", "Poke")
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", PokeServiceRoute)
+	w.Header().Add("X-Package-Interface", "users.UserService")
+
+
+	var actionErr error
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+
+				derr := fmt.Errorf("panic err: %#v", rerr)
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+					"package": "github.com/gokit/rpkit/examples/users",
+					"api_base": BaseServiceName,
+					"method": "Poke",
+					"api_service": MethodServiceName,
+					"route": PokeServiceRoute,
+					"api": "users.UserService",
+				})
+				panic(rerr)
+			}
+		}()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+		actionErr = impl.service(ctx)
+	}()
+
+	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
+			"package": "github.com/gokit/rpkit/examples/users",
+			"api_base": BaseServiceName,
+			"method": "Poke",
+			"api_service": MethodServiceName,
+			"route": PokeServiceRoute,
+			"api": "users.UserService",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
+
+
+//****************************************************************************
+// RP: Error Returning methods
+// Method: PokeAgain
+// Source: github.com/gokit/rpkit/examples/users
+// Handler: users.UserService.PokeAgain
+//****************************************************************************
+
+// PokeAgainServiceRoute defines the route for the PokeAgain method.
+const PokeAgainServiceRoute = "users.UserService/PokeAgain"
+
+// PokeAgainServiceRoutePath defines the full method path for the PokeAgain method.
+const PokeAgainServiceRoutePath = "/rpkit/users.UserService/PokeAgain"
+
+// pokeagainServiceRoutePathURL defines a parsed path for the PokeAgain, it
+// ensures the created path is valid as a url.
+var pokeagainServiceRoutePathURL = mustSimpleParseURL(PokeAgainServiceRoutePath)
+
+// PokeAgainContractSource contains the source version of expected method contract.
+const PokeAgainContractSource = `type PokeAgainMethodContract interface {
+	PokeAgain()  error  
+}
+`
+
+// PokeAgainMethodContract defines a contract interface for method "PokeAgain"
+// provided by "users.UserService" in "github.com/gokit/rpkit/examples/users". It allows us
+// establish a simple contract suitable for meeting the needs of said method.
+type PokeAgainMethodContract interface{
+	PokeAgain()  error  
+}
+
+// PokeAgainMethodService defines the returned signature by the ServicePokeAgain
+// which executes it's internal behaviour based off on it's PokeAgainMethodContract.
+type PokeAgainMethodService func(context.Context) error
+
+// ServePokeAgainMethod implements the core contract behaviour to service "PokeAgain"
+// from "users.UserService" in "github.com/gokit/rpkit/examples/users". It's job is to provide a pluggable function,
+// that can then be used within any transport layer, to said execute behaviour of method as a service.
+func ServePokeAgainMethod(provider PokeAgainMethodContract) PokeAgainMethodService {
+	return func(ctx context.Context) error {
+		
+		return provider.PokeAgain()
+		
+	}
+}
+
+// PokeAgainClientContract defines a contract interface for clients to make request to PokeAgainServer.
+type PokeAgainClientContract interface {
+	PokeAgain(ctx context.Context, ) (error)
+}
+
+// NewPokeAgainMethodClient returns a new PokeAgainMethodContract it relies on
+// NewPokeAgainMethodContractClient.
+func NewPokeAgainMethodClient(addr string, client HTTPClient) (PokeAgainClientContract, error) {
+	return NewPokeAgainMethodContractClient(addr, client, nil, nil)
+}
+
+// NewPokeAgainMethodContractClient returns a new PokeAgainMethodContract implementation, which
+// will make it's call to provided address with the provided http.Client to a PokeAgainServer to
+// perform action as specified by contract.
+func NewPokeAgainMethodContractClient(addr string, client HTTPClient, act ActWithRequest, resv ResponseValidation) (PokeAgainClientContract, error) {
+	root, err := parseURL(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return implPokeAgainClient{
+		actor: act,
+		resval: resv,
+		rootURL: root,
+		client: skipRedirects(client),
+	}, nil
+}
+
+type implPokeAgainClient struct {
+	rootURL *url.URL
+	client HTTPClient
+	actor ActWithRequest
+	resval ResponseValidation
+}
+
+// PokeAgain makes a request to the server's address with provided arguments and returns
+// response received from server.
+func (imp implPokeAgainClient) PokeAgain(ctx context.Context, ) (error){
+	// targetURL for the requests to be made.
+	targetURL := imp.rootURL.ResolveReference(pokeagainServiceRoutePathURL)
+	
+	ctx = WithRequestMethod(ctx, "POST")
+	ctx = WithClientRequestURI(ctx, targetURL.String())
+	ctx = WithRequestTransport(ctx, "RPKIT:HTTP:CLIENT")
+
+	req, err := http.NewRequest("POST", targetURL.String(), nil)
+	if err != nil {
+		return err
+	}
+	req = req.WithContext(ctx)
+
+	if header, err := CtxCustomHeader(ctx); err == nil {
+		for key, list := range header {
+			req.Header[key] = append(req.Header[key], list...)
+		}
+	}
+
+	if imp.actor != nil {
+		imp.actor(req)
+	}
+
+	ctx = WithRequest(ctx, req)
+	ctx = WithRequestCookies(ctx, req.Cookies())
+	ctx = WithRequestHeader(ctx, req.Header)
+	ctx = WithRequestAcceptsType(ctx, req.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, req.Header.Get("Content-Type"))
+
+	res, err := imp.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	ctx = WithResponse(ctx, res)
+	ctx = WithResponseCookies(ctx, res.Cookies())
+	ctx = WithResponseHeader(ctx, res.Header)
+	ctx = WithResponseContentType(ctx, res.Header.Get("Content-Type"))
+
+	defer res.Body.Close()
+
+	if imp.resval != nil {
+		if err := imp.resval(res); err != nil {
+			return err
+		}
+	}
+
+	if requestFacedInternalIssues(res) {
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
+		return ErrServerInternalProblem
+	}
+
+	if requestFailed(res) {
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
+		return ErrBadRequest
+	}
+
+	if requestRedirected(res) {
+		jsonErr, err := loadJSONError(res.Body)
+           if err == nil {
+	return jsonErr
+           }
+          log.Printf("Failed to load JSONErrorResponse from server: %+q\n", err)
+		return ErrServerRejectedRequest
+	}
+	
+
+	return nil
+}
+
+// PokeAgainServer implements a http.Handler for servicing the method PokeAgain
+// from users.UserService.
+type PokeAgainServer interface {
+	http.Handler
+}
+
+type implPokeAgainHandler struct{
+	hook Hook
+	headers http.Header
+	service PokeAgainMethodService
+}
+
+// NewPokeAgainServer returns a new instance of the HTTPHandler which services all
+// http requests for giving method users.UserService.PokeAgain.
+func NewPokeAgainServer(service PokeAgainMethodService, hook Hook, headers http.Header) PokeAgainServer {
+	return implPokeAgainHandler{
+		hook: hook,
+		headers: headers,
+		service: service,
+	}
+}
+
+// ServeHTTP implements the http.Handler.ServeHTTP method and services requests for giving method "PokeAgain".
+func (impl implPokeAgainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ctx = WithRequest(ctx, r)
+	ctx = WithResponseWriter(ctx, w)
+	ctx = WithCustomHeader(ctx, impl.headers)
+	ctx = WithRequestMethod(ctx, r.Method)
+	ctx = WithRequestCookies(ctx, r.Cookies())
+	ctx = WithRequestAcceptsType(ctx, r.Header.Get("Accept"))
+	ctx = WithRequestContentType(ctx, r.Header.Get("Content-Type"))
+	ctx = WithRequestHeader(ctx, r.Header)
+	ctx = WithResponseHeader(ctx, w.Header())
+	ctx = WithServiceName(ctx, BaseServiceName)
+	ctx = WithServicePath(ctx, MethodServiceName)
+	ctx = WithServicePackage(ctx, ServiceCodePath)
+	ctx = WithServicePackageName(ctx, ServiceCodePathName)
+	ctx = WithServiceSourcePackage(ctx, "github.com/gokit/rpkit/examples/users")
+	ctx = WithServiceSourcePackageName(ctx, "users")
+	ctx = WithServiceMethodName(ctx, "PokeAgain")
+	ctx = WithServiceMethodPath(ctx, PokeAgainServiceRoute)
+	ctx = WithServiceMethodRoute(ctx, PokeAgainServiceRoutePath)
+
+	if impl.hook != nil {
+		impl.hook.RequestReceived(ctx)
+	}
+
+	if r.Method != "POST" && r.Method != "HEAD" {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, MethodTypeError,  http.StatusMethodNotAllowed, "only POST or HEAD request allowed", ErrInvalidRequestMethod, map[string]interface{}{
+			"package": "github.com/gokit/rpkit/examples/users",
+			"api_base": BaseServiceName,
+			"method": "PokeAgain",
+			"api_service": MethodServiceName,
+			"route": PokeAgainServiceRoute,
+			"api": "users.UserService",
+		})
+		return
+	}
+
+	if r.Method == "HEAD" {
+		for key, vals := range impl.headers {
+			for _, item := range vals {
+				w.Header().Add(key, item)
+			}
+		}
+
+		if impl.hook != nil {
+			impl.hook.RequestAccepted(ctx)
+			impl.hook.RequestProcessed(ctx)
+			impl.hook.ResponsePrepared(ctx)
+		}
+
+		w.Header().Add("X-Agent", "RPKIT")
+		w.Header().Add("X-Service", BaseServiceName)
+		w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/users")
+		w.Header().Add("X-Method", "PokeAgain")
+		w.Header().Add("X-Method-Service", MethodServiceName)
+		w.Header().Add("X-API-Route", PokeAgainServiceRoute)
+		w.Header().Add("X-Package-Interface", "users.UserService")
+
+		w.WriteHeader(http.StatusNoContent)
+
+		if impl.hook != nil {
+			impl.hook.ResponseSent(ctx)
+		}
+
+		return
+	}
+
+	if !strings.HasSuffix(prefixIfNeed(r.URL.Path, "/"), PokeAgainServiceRoutePath) {
+		if impl.hook != nil {
+			impl.hook.RequestRejected(ctx)
+		}
+
+		jsonWriteError(w, URLError,  http.StatusBadRequest, "only POST request to \""+PokeAgainServiceRoutePath+"\" allowed", ErrInvalidRequestURI, map[string]interface{}{
+			"package": "github.com/gokit/rpkit/examples/users",
+			"api_base": BaseServiceName,
+			"method": "PokeAgain",
+			"api_service": MethodServiceName,
+			"route": PokeAgainServiceRoute,
+			"api": "users.UserService",
+		})
+		return
+	}
+
+	if impl.headers != nil {
+		if accepts := impl.headers.Get("Accept"); accepts != "" {
+			ctype := r.Header.Get("Content-Type")
+			if !strings.Contains(accepts, ctype){
+				if impl.hook != nil {
+					impl.hook.RequestRejected(ctx)
+				}
+
+				jsonWriteError(w, AcceptTypeUnknownError,  http.StatusBadRequest, "request content type not supported",
+				ErrInvalidContentType, map[string]interface{}{
+					"package": "github.com/gokit/rpkit/examples/users",
+					"api_base": BaseServiceName,
+					"method": "PokeAgain",
+					"api_service": MethodServiceName,
+					"route": PokeAgainServiceRoute,
+					"api": "users.UserService",
+				})
+				return
+			}
+		}
+	}
+
+	if impl.hook != nil {
+		impl.hook.RequestAccepted(ctx)
+	}
+
+	for key, vals := range impl.headers {
+		for _, item := range vals {
+			w.Header().Add(key, item)
+		}
+	}
+
+	w.Header().Add("X-Agent", "RPKIT")
+	w.Header().Add("X-Service", BaseServiceName)
+	w.Header().Add("X-Package", "github.com/gokit/rpkit/examples/users")
+	w.Header().Add("X-Method", "PokeAgain")
+	w.Header().Add("X-Method-Service", MethodServiceName)
+	w.Header().Add("X-API-Route", PokeAgainServiceRoute)
+	w.Header().Add("X-Package-Interface", "users.UserService")
+
+
+	var actionErr error
+	func(){
+		defer func(){
+			if rerr := recover(); rerr != nil {
+				if impl.hook != nil {
+					impl.hook.RequestPanic(ctx, rerr)
+				}
+
+				derr := fmt.Errorf("panic err: %#v", rerr)
+				jsonWriteError(w, ActionPanicError,  http.StatusInternalServerError, "panic occured with method run", derr, map[string]interface{}{
+					"package": "github.com/gokit/rpkit/examples/users",
+					"api_base": BaseServiceName,
+					"method": "PokeAgain",
+					"api_service": MethodServiceName,
+					"route": PokeAgainServiceRoute,
+					"api": "users.UserService",
+				})
+				panic(rerr)
+			}
+		}()
+
+		if impl.hook != nil {
+			impl.hook.RequestProcessed(ctx)
+		}
+
+		actionErr = impl.service(ctx)
+	}()
+
+	if actionErr != nil {
+		if impl.hook != nil {
+			impl.hook.RequestError(ctx, actionErr)
+		}
+
+		jsonWriteError(w, ActionError,  http.StatusBadRequest, "Method returned err", actionErr, map[string]interface{}{
+			"package": "github.com/gokit/rpkit/examples/users",
+			"api_base": BaseServiceName,
+			"method": "PokeAgain",
+			"api_service": MethodServiceName,
+			"route": PokeAgainServiceRoute,
+			"api": "users.UserService",
+		})
+		return
+	}
+
+	if impl.hook != nil {
+		impl.hook.ResponsePrepared(ctx)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+
+	if impl.hook != nil {
+		impl.hook.ResponseSent(ctx)
+	}
+}
 
 
 //****************************************************************************
@@ -3037,11 +3772,10 @@ func jsonWriteError(w http.ResponseWriter, itype string, code int, message strin
 	res.Message = message
 
 	if err != nil {
-	  if data, badErr := json.Marshal(err); badErr == nil {
-	    res.Err = data
-	  }else{
-	    res.Err = []byte(err.Error())
-	  }
+        res.ErrMessage = err.Error()
+        if data, badErr := json.Marshal(err); badErr == nil {
+            res.ErrData = data
+        }
 	}
 
 	w.WriteHeader(code)
