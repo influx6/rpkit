@@ -17,5 +17,7 @@ go:
 
 after_install:
   - docker build -f travis.dockerfile -t "rpkit:rpkit" ./
-  - docker run -it -rm rpkit 
+
+script:
+  - docker run -it -rm rpkit
 
