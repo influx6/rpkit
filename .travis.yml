@@ -15,7 +15,7 @@ go:
   - 1.10
 
 
-after_install:
+before_script:
   - docker build -f travis.dockerfile -t "rpkit:rpkit" ./
 
 script:
