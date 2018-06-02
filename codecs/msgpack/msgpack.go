@@ -1,3 +1,4 @@
+// Package msgpack implements the Encoder and Decoders for use with the MessagePack format.
 package msgpack
 
 import (

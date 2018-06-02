@@ -16,5 +16,5 @@ before_script:
   - docker tag rpkit_test:latest rpkit_test:latest
 
 script:
-  - docker run -it --rm rpkit_test:latest
+  - docker run -it --rm rpkit_test:latest /bin/sh tests.sh
 

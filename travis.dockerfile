@@ -7,4 +7,4 @@ WORKDIR /go/src/github.com/gokit/rpkit
 
 RUN chmod +x ./tests.sh && npm install -g mocha chai
 
-CMD ["sh ./tests.sh"]
+CMD ["./tests.sh"]

@@ -1,3 +1,4 @@
+// Package json implements the Encoder and Decoders for use with the json format.
 package json
 
 import (

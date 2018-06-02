@@ -1,4 +1,4 @@
-// Package gobs implements the En
+// Package gobs implements the Encoder and Decoders for use with the gop format.
 package gobs
 
 import (
