@@ -77,8 +77,12 @@ func main() {
 
 	getByService := userservicerp.NewGetByServer(userservicerp.ServeGetByMethod(userService, userservicerp.IntTypeEncoder{
 		Encoder: userservicerp.DefaultJSONEncoder,
-	}, userservicerp.StringTypeDecoder{
-		Decoder: userservicerp.JSONDecoder{},
+	}, userservicerp.StringTargetDecoder{
+		DecoderFunc: func(ctx context.Context, reader io.Reader) (string, error) {
+			var res string
+			err := json.NewDecoder(reader).Decode(&res)
+			return res, err
+		},
 	}), nil, header)
 
 	getUsersService := userservicerp.NewGetUsersServer(userservicerp.ServeGetUsersMethod(userService,

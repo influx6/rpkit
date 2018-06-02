@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package rails;
+
+message Rails {
+    uint64 route = 1;
+    string name = 2;
+}

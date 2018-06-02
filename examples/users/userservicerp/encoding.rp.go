@@ -383,9 +383,6 @@ var (
     // DefaultJSONEncoder provides a package-level json encoder for use.
     DefaultJSONEncoder JSONEncoder
 
-    // DefaultJSONDecoder provides a package-level json decoder for use.
-    DefaultJSONDecoder JSONDecoder
-
     // DefaultJSONTargetDecoder provides a package-level json target decoder for use.
     DefaultJSONTargetDecoder JSONTargetDecoder
 )
@@ -400,23 +397,44 @@ func (JSONEncoder) Encode(ctx context.Context,w io.Writer, payload interface{}) 
 	return json.NewEncoder(w).Encode(payload)
 }
 
-// JSONDecoder implements a wrapper over the encoding/json JSONEncoder to
-// all incoming data into a interface{} type.
-type JSONDecoder struct{}
-
-// Encode implements the necessary logic to use json for encoding.
-func (JSONDecoder) Decode(ctx context.Context,r io.Reader) (interface{}, error) {
-	var data interface{}
-	err := json.NewDecoder(r).Decode(&data)
-	return data, err
-}
-
-// JSONTargetDecoder implements a wrapper over the encoding/json JSONEncoder to
-// all incoming data into a interface{} type.
+// JSONTargetDecoder implements a json decoder that wraps the encoding/json.NewDecoder.
 type JSONTargetDecoder struct{}
 
-// Encode implements the necessary logic to use json for encoding to provided
-// target of type interface{}.
+// Decdode implements the necessary logic to decode data from reader into provided target.
 func (JSONTargetDecoder) Decode(ctx context.Context, r io.Reader, data interface{}) error {
 	return json.NewDecoder(r).Decode(data)
 }
+
+//****************************************************************************
+// Func Encoders / Decoders Implementations
+// Source: github.com/gokit/rpkit/examples/users
+//****************************************************************************
+
+// FuncEncoder implements a wrapper over the custom encoding function
+// that handles the logic to encode giving type.
+type FuncEncoder struct{
+    EncodeFunc func(context.Context, io.Writer, interface{}) error
+}
+
+// Encode calls the necessary function internally to encode type.
+func (f FuncEncoder) Encode(ctx context.Context, w io.Writer, t interface{}) error {
+    if f.EncodeFunc == nil {
+        return errors.New("not implemented")
+    }
+    return f.EncodeFunc(ctx, w, t)
+}
+
+// FuncDecoder implements a wrapper over the custom decoding function
+// that handles the logic to decode giving data into a type from provided reader.
+type FuncDecoder struct{
+    DecodeFunc func(context.Context, io.Reader) (interface{}, error)
+}
+
+// Decode calls the necessary function internally to decode data to type.
+func (f FuncDecoder) Decode(ctx context.Context, r io.Reader) (interface{}, error) {
+    if f.DecodeFunc == nil {
+        return nil, errors.New("not implemented")
+    }
+    return f.DecodeFunc(ctx, r)
+}
+

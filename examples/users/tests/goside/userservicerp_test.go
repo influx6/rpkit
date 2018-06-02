@@ -132,8 +132,12 @@ func TestUserServiceRP_Get(t *testing.T) {
 func TestUserServiceRP_GetBy(t *testing.T) {
 	service := userservicerp.ServeGetByMethod(userService, userservicerp.IntTypeEncoder{
 		Encoder: userservicerp.DefaultJSONEncoder,
-	}, userservicerp.StringTypeDecoder{
-		Decoder: userservicerp.JSONDecoder{},
+	}, userservicerp.StringTargetDecoder{
+		DecoderFunc: func(ctx context.Context, reader io.Reader) (string, error) {
+			var res string
+			err := json.NewDecoder(reader).Decode(&res)
+			return res, err
+		},
 	})
 
 	server := httptest.NewServer(userservicerp.NewGetByServer(service, nil, http.Header{}))
