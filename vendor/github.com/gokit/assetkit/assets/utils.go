@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -30,7 +31,7 @@ type DirStatement struct {
 
 // GetDirStatement returns a instance of a DirStatement which contains all files
 // retrieved through running the directory.
-func GetDirStatement(dir string, doGo bool) (DirStatement, error) {
+func GetDirStatement(dir string, exceptions ...*regexp.Regexp) (DirStatement, error) {
 	var statement DirStatement
 	statement.FilesByExt = make(map[string][]FileStatement, 0)
 
@@ -39,15 +40,17 @@ func GetDirStatement(dir string, doGo bool) (DirStatement, error) {
 			return true
 		}
 
+		for _, match := range exceptions {
+			if match.MatchString(relPath) {
+				return true
+			}
+		}
+
 		if strings.Contains(absolutePath, ".git") {
 			return true
 		}
 
 		ext := getExtension(relPath)
-
-		if !doGo && ext == ".go" {
-			return true
-		}
 
 		fileStatement := FileStatement{
 			Path:    relPath,
@@ -76,8 +79,13 @@ type DirWalker func(rel string, abs string, info os.FileInfo) bool
 // WalkDir will run through the provided path which is expected to be a directory
 // and runs the provided callback with the current path and FileInfo.
 func WalkDir(dir string, callback DirWalker) error {
-	if isWin() {
-		dir = filepath.ToSlash(dir)
+	dir = filepath.ToSlash(dir)
+
+	// we need to ensure we have absolute path directly.
+	if !filepath.IsAbs(dir) {
+		if tryAbs, err := filepath.Abs(dir); err == nil {
+			dir = filepath.ToSlash(tryAbs)
+		}
 	}
 
 	cerr := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -92,19 +100,15 @@ func WalkDir(dir string, callback DirWalker) error {
 		}
 
 		// If on windows, correct path slash.
-		if isWin() {
-			path = filepath.ToSlash(path)
-		}
+		path = filepath.ToSlash(path)
 
-		// Retrive relative path for giving path.
+		// Retrieve relative path for giving path.
 		relPath, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err
 		}
 
-		if isWin() {
-			relPath = filepath.ToSlash(relPath)
-		}
+		relPath = filepath.ToSlash(relPath)
 
 		// If false is return then stop walking and return errStopWalking.
 		if !callback(relPath, path, info) {
@@ -194,6 +198,8 @@ func walkDir(extensions []string, items map[string]string, root string, path str
 		return err
 	}
 
+	rel = filepath.ToSlash(rel)
+
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -205,4 +211,8 @@ func walkDir(extensions []string, items map[string]string, root string, path str
 
 func isWin() bool {
 	return runtime.GOOS == "windows"
+}
+
+func fileJoin(s ...string) string {
+	return filepath.ToSlash(filepath.Join(s...))
 }

@@ -12,21 +12,22 @@ import (
 	"strings"
 	"time"
 
+	"io/ioutil"
+
 	"github.com/gokit/assetkit/assets"
-	"github.com/influx6/faux/exec"
-	"github.com/influx6/faux/metrics"
+	"github.com/gokit/zexec"
 )
 
 var (
 	inGOPATH         = os.Getenv("GOPATH")
-	inGOPATHSrc      = filepath.Join(inGOPATH, "src")
-	guSrc            = filepath.Join(inGOPATHSrc, "github.com/gokit/assetkit")
-	guSrcNodeModules = filepath.Join(inGOPATHSrc, "github.com/gokit/assetkit/node_modules")
-	cleanCSSBin      = filepath.Join(inGOPATHSrc, "github.com/gokit/assetkit/node_modules/clean-css-cli/bin")
+	inGOPATHSrc      = filepath.ToSlash(fileJoin(inGOPATH, "src"))
+	guSrc            = filepath.ToSlash(fileJoin(inGOPATHSrc, "github.com/gokit/assetkit"))
+	guSrcNodeModules = filepath.ToSlash(fileJoin(inGOPATHSrc, "github.com/gokit/assetkit/node_modules"))
+	nodeBin          = filepath.ToSlash(fileJoin(inGOPATHSrc, "github.com/gokit/assetkit/node_modules/.bin/"))
 )
 
 // CleanCSSPacker defines an implementation for parsing css files.
-// WARNING: Requires Nodejs to be installed.
+// WARNING: Requires Nodejs to be installed. Else original file contents will be copied as is.
 type CleanCSSPacker struct {
 	Args []string
 }
@@ -47,7 +48,7 @@ func (cess CleanCSSPacker) Pack(statements []assets.FileStatement, dir assets.Di
 
 func processCleanStatement(statement assets.FileStatement, cess CleanCSSPacker, directives *[]assets.WriteDirective) error {
 	args := append([]string{}, cess.Args...)
-	args = append(args, filepath.Clean(statement.AbsPath))
+	args = append(args, statement.AbsPath)
 
 	node, err := gexec.LookPath("node")
 	if err != nil {
@@ -56,21 +57,33 @@ func processCleanStatement(statement assets.FileStatement, cess CleanCSSPacker, 
 
 	os.Setenv("node", node)
 
-	command := fmt.Sprintf("%s %s", filepath.Join(cleanCSSBin, "cleancss"), strings.Join(args, " "))
+	command := fmt.Sprintf("%s %s", fileJoin(nodeBin, "cleancss"), strings.Join(args, " "))
 
 	var errBuf, outBuf bytes.Buffer
-	cleanCmd := exec.New(
-		exec.Async(),
-		exec.Command(command),
-		exec.Output(&outBuf),
-		exec.Err(&errBuf),
+	cleanCmd := zexec.New(
+		zexec.Async(),
+		zexec.Command(command),
+		zexec.Output(&outBuf),
+		zexec.Err(&errBuf),
 	)
 
 	ctx, cancl := context.WithTimeout(context.Background(), time.Minute)
 	defer cancl()
 
-	if err := cleanCmd.Exec(ctx, metrics.New()); err != nil {
-		return fmt.Errorf("Command Execution Failed: %+q\n Response: %+q\n Command: %+q", err, errBuf.String(), command)
+	if _, err := cleanCmd.Exec(ctx); err != nil {
+		fmt.Printf("Command Execution Failed: \n%s\n Response: %s\n Command: %s\n", err, errBuf.String(), command)
+
+		content, err := ioutil.ReadFile(statement.AbsPath)
+		if err != nil {
+			return err
+		}
+
+		*directives = append(*directives, assets.WriteDirective{
+			OriginPath:    statement.Path,
+			OriginAbsPath: statement.AbsPath,
+			Writer:        bytes.NewReader(content),
+		})
+		return nil
 	}
 
 	*directives = append(*directives, assets.WriteDirective{

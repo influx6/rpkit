@@ -12,17 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gokit/assetkit/assets"
-	"github.com/influx6/faux/exec"
-	"github.com/influx6/faux/metrics"
-)
+	"io/ioutil"
 
-var (
-	lessBin = filepath.Join(inGOPATHSrc, "github.com/gokit/assetkit/node_modules/less/bin")
+	"github.com/gokit/assetkit/assets"
+	"github.com/gokit/zexec"
 )
 
 // LessPacker defines an implementation for parsing .less files into css files using the less compiler in nodejs.
-// WARNING: Requires Nodejs to be installed.
+// WARNING: Requires Nodejs to be installed. Else original file contents will be copied as is.
 type LessPacker struct {
 	MainFile string
 	Options  map[string]string
@@ -59,8 +56,8 @@ func (less LessPacker) Pack(statements []assets.FileStatement, dir assets.DirSta
 
 func processStatement(statement assets.FileStatement, less LessPacker, directives *[]assets.WriteDirective) error {
 	fileExt := filepath.Ext(statement.Path)
-	cssFileName := filepath.Join(filepath.Dir(statement.Path), strings.Replace(filepath.Base(statement.Path), fileExt, ".css", 1))
-	cssAbsFileName := filepath.Join(filepath.Dir(statement.AbsPath), strings.Replace(filepath.Base(statement.Path), fileExt, ".css", 1))
+	cssFileName := fileJoin(filepath.Dir(statement.Path), strings.Replace(filepath.Base(statement.Path), fileExt, ".css", 1))
+	cssAbsFileName := fileJoin(filepath.Dir(statement.AbsPath), strings.Replace(filepath.Base(statement.Path), fileExt, ".css", 1))
 
 	cssFileName = strings.Replace(cssFileName, "less/", "css/", 1)
 	cssAbsFileName = strings.Replace(cssAbsFileName, "less/", "css/", 1)
@@ -80,21 +77,33 @@ func processStatement(statement assets.FileStatement, less LessPacker, directive
 
 	os.Setenv("node", node)
 
-	command := fmt.Sprintf("%s %s", filepath.Join(lessBin, "lessc"), strings.Join(args, " "))
+	command := fmt.Sprintf("%s %s", fileJoin(nodeBin, "lessc"), strings.Join(args, " "))
 
 	var errBuf, outBuf bytes.Buffer
-	cleanCmd := exec.New(
-		exec.Async(),
-		exec.Command(command),
-		exec.Output(&outBuf),
-		exec.Err(&errBuf),
+	cleanCmd := zexec.New(
+		zexec.Async(),
+		zexec.Command(command),
+		zexec.Output(&outBuf),
+		zexec.Err(&errBuf),
 	)
 
 	ctx, cancl := context.WithTimeout(context.Background(), time.Minute)
 	defer cancl()
 
-	if err := cleanCmd.Exec(ctx, metrics.New()); err != nil {
-		return fmt.Errorf("Command Execution Failed: %+q\n Response: %+q\n Command: %+q", err, errBuf.String(), command)
+	if _, err := cleanCmd.Exec(ctx); err != nil {
+		fmt.Printf("Command Execution Failed: %q\n Response: %q\n Command: %q\n", err, errBuf.String(), command)
+
+		content, err := ioutil.ReadFile(statement.AbsPath)
+		if err != nil {
+			return err
+		}
+
+		*directives = append(*directives, assets.WriteDirective{
+			OriginPath:    statement.Path,
+			OriginAbsPath: statement.AbsPath,
+			Writer:        bytes.NewReader(content),
+		})
+		return nil
 	}
 
 	*directives = append(*directives, assets.WriteDirective{
@@ -104,4 +113,8 @@ func processStatement(statement assets.FileStatement, less LessPacker, directive
 	})
 
 	return nil
+}
+
+func fileJoin(s ...string) string {
+	return filepath.ToSlash(filepath.Join(s...))
 }

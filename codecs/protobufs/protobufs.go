@@ -9,6 +9,8 @@ import (
 
 	"bytes"
 
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -18,6 +20,10 @@ var (
 
 	// DefaultProtobufTargetDecoder provides a package-level json target decoder for use.
 	DefaultProtobufTargetDecoder ProtobufUnmarshalDecoder
+
+	bytesPool = sync.Pool{New: func() interface{} {
+		return new(bytes.Buffer)
+	}}
 )
 
 // ProtobufEncoder implements a wrapper over the encoding with protobuffers definitions to
@@ -33,7 +39,10 @@ func (ProtobufEncoder) Encode(ctx context.Context, w io.Writer, payload interfac
 			return err
 		}
 
-		_, err = w.Write(data)
+		n, err := w.Write(data)
+		if n != len(data) {
+			return io.ErrShortWrite
+		}
 		return err
 	}
 
@@ -49,8 +58,10 @@ type ProtobufUnmarshalDecoder struct{}
 // target of type interface{}.
 func (ProtobufUnmarshalDecoder) Decode(ctx context.Context, r io.Reader, data interface{}) error {
 	if pb, ok := data.(proto.Message); ok {
-		var b bytes.Buffer
-		_, err := io.Copy(&b, r)
+		b := bytesPool.Get().(*bytes.Buffer)
+		defer bytesPool.Put(b)
+
+		_, err := io.Copy(b, r)
 		if err != nil {
 			return err
 		}

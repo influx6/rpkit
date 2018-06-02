@@ -6,6 +6,8 @@ import (
 	"context"
 	"io"
 
+	"sync"
+
 	"github.com/Sereal/Sereal/Go/sereal"
 )
 
@@ -13,11 +15,12 @@ var (
 	// DefaultSerealEncoder provides a package-level json encoder for use.
 	DefaultSerealEncoder SerealEncoder
 
-	// DefaultSerealDecoder provides a package-level json decoder for use.
-	DefaultSerealDecoder SerealDecoder
-
 	// DefaultSerealTargetDecoder provides a package-level json target decoder for use.
 	DefaultSerealTargetDecoder SerealUnmarshalDecoder
+
+	bytesPool = sync.Pool{New: func() interface{} {
+		return new(bytes.Buffer)
+	}}
 )
 
 // SerealEncoder implements a wrapper over the encoding/json SerealEncoder to
@@ -37,23 +40,6 @@ func (SerealEncoder) Encode(ctx context.Context, w io.Writer, payload interface{
 	return err
 }
 
-// SerealDecoder implements a wrapper over the encoding/json SerealEncoder to
-// all incoming data into a interface{} type.
-type SerealDecoder struct{}
-
-// Encode implements the necessary logic to use json for encoding.
-func (SerealDecoder) Decode(ctx context.Context, r io.Reader) (interface{}, error) {
-	var b bytes.Buffer
-	_, err := io.Copy(&b, r)
-	if err != nil {
-		return nil, err
-	}
-
-	var item interface{}
-	err = sereal.Unmarshal(b.Bytes(), &item)
-	return item, err
-}
-
 // SerealUnmarshalDecoder implements a wrapper over the encoding/json SerealEncoder to
 // all incoming data into a interface{} type.
 type SerealUnmarshalDecoder struct{}
@@ -61,8 +47,10 @@ type SerealUnmarshalDecoder struct{}
 // Encode implements the necessary logic to use json for encoding to provided
 // target of type interface{}.
 func (SerealUnmarshalDecoder) Decode(ctx context.Context, r io.Reader, data interface{}) error {
-	var b bytes.Buffer
-	_, err := io.Copy(&b, r)
+	b := bytesPool.Get().(*bytes.Buffer)
+	defer bytesPool.Put(b)
+
+	_, err := io.Copy(b, r)
 	if err != nil {
 		return err
 	}

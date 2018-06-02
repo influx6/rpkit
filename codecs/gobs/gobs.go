@@ -11,9 +11,6 @@ var (
 	// DefaultGOBSEncoder provides a package-level json encoder for use.
 	DefaultGOBSEncoder GOBSEncoder
 
-	// DefaultGOBSDecoder provides a package-level json decoder for use.
-	DefaultGOBSDecoder GOBSDecoder
-
 	// DefaultGOBSTargetDecoder provides a package-level json target decoder for use.
 	DefaultGOBSTargetDecoder GOBSUnmarshalDecoder
 )
@@ -26,17 +23,6 @@ type GOBSEncoder struct{}
 // Encode implements the necessary logic to use json for encoding.
 func (GOBSEncoder) Encode(ctx context.Context, w io.Writer, payload interface{}) error {
 	return gob.NewEncoder(w).Encode(payload)
-}
-
-// GOBSDecoder implements a wrapper over the encoding/json GOBSEncoder to
-// all incoming data into a interface{} type.
-type GOBSDecoder struct{}
-
-// Encode implements the necessary logic to use json for encoding.
-func (GOBSDecoder) Decode(ctx context.Context, r io.Reader) (interface{}, error) {
-	var data interface{}
-	err := gob.NewDecoder(r).Decode(&data)
-	return data, err
 }
 
 // GOBSUnmarshalDecoder implements a wrapper over the encoding/json GOBSEncoder to

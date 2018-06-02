@@ -10,6 +10,8 @@ import (
 	"sync"
 	"text/template"
 
+	"regexp"
+
 	"github.com/gokit/assetkit/generators/data"
 	"github.com/influx6/faux/hexwriter"
 	"github.com/influx6/moz/gen"
@@ -37,6 +39,7 @@ type StaticDirective struct {
 type WriteDirective struct {
 	OriginPath    string
 	OriginAbsPath string
+	Length        int64
 	Writer        io.WriterTo
 	Static        *StaticDirective
 }
@@ -93,11 +96,32 @@ func (w *Webpack) Register(ext string, packer Packer) {
 	w.packers[ext] = packer
 }
 
+var (
+	goSources  = regexp.MustCompile(`.go$`)
+	gitSources = regexp.MustCompile(".git")
+
+	noGoOrGitSources = []*regexp.Regexp{
+		goSources,
+		gitSources,
+	}
+
+	noGitSources = []*regexp.Regexp{
+		gitSources,
+	}
+)
+
 // Build runs through the directory pull all files and runs them through the
 // packers to service each files by extension and returns a slice of all
 // WriteDirective for final processing.
 func (w *Webpack) Build(dir string, doGoSources bool) (map[string][]WriteDirective, map[string][]WriteDirective, error) {
-	statement, err := GetDirStatement(dir, doGoSources)
+	var excepts []*regexp.Regexp
+	if doGoSources {
+		excepts = noGitSources
+	} else {
+		excepts = noGoOrGitSources
+	}
+
+	statement, err := GetDirStatement(dir, excepts...)
 	if err != nil {
 		return nil, nil, err
 	}
